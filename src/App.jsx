@@ -1,11 +1,20 @@
 import MonthlyExpenses from "./components/MonthlyExpenses"
+import Subscriptions from "./components/Subscriptions"
 import { useState } from "react"
 import IncomeAndTaxes from "./components/IncomeAndTaxes"
 
 const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings Goals", "Dashboard"]
 
 function App() {
-  const [currentStep, setCurrentStep] = useState(0)
+  const [currentStep, setCurrentStep] = useState(() => {
+  const saved = localStorage.getItem("budgetStep")
+  return saved ? Number(saved) : 0
+})
+
+const changeStep = (step) => {
+  setCurrentStep(step)
+  localStorage.setItem("budgetStep", step)
+}
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem("budgetData")
     return saved
@@ -35,6 +44,8 @@ const resetData = () => {
   }
   setData(blank)
   localStorage.removeItem("budgetData")
+  setCurrentStep(0)
+  localStorage.removeItem("budgetStep")
 }
   const renderStep = () => {
     switch (currentStep) {
@@ -43,7 +54,7 @@ const resetData = () => {
       case 1:
         return <MonthlyExpenses data={data} setData={updateData} />
       case 2:
-        return <p className="text-gray-500">Subscriptions — coming soon</p>
+        return <Subscriptions data={data} setData={updateData} />
       case 3:
         return <p className="text-gray-500">Savings Goals — coming soon</p>
       case 4:
@@ -72,7 +83,7 @@ const resetData = () => {
         {STEPS.map((step, index) => (
           <button
             key={step}
-            onClick={() => setCurrentStep(index)}
+            onClick={() => changeStep(index)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               index === currentStep
                 ? "bg-emerald-600 text-white"
