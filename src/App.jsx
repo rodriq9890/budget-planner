@@ -1,7 +1,61 @@
+import { useState } from "react"
+import IncomeAndTaxes from "./components/IncomeAndTaxes"
+
+const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings Goals", "Dashboard"]
+
 function App() {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [data, setData] = useState({
+    grossSalary: 0,
+    retirement401k: 0,
+    hsa: 0,
+    healthInsurance: 0,
+    dental: 0,
+    vision: 0,
+  })
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return <IncomeAndTaxes data={data} setData={setData} />
+      case 1:
+        return <p className="text-gray-500">Monthly Expenses — coming soon</p>
+      case 2:
+        return <p className="text-gray-500">Subscriptions — coming soon</p>
+      case 3:
+        return <p className="text-gray-500">Savings Goals — coming soon</p>
+      case 4:
+        return <p className="text-gray-500">Dashboard — coming soon</p>
+      default:
+        return null
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-white">Budget Planner</h1>
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      <header className="border-b border-gray-800 px-6 py-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Budget Planner</h1>
+      </header>
+
+      <nav className="px-6 py-4 flex gap-2 border-b border-gray-800">
+        {STEPS.map((step, index) => (
+          <button
+            key={step}
+            onClick={() => setCurrentStep(index)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              index === currentStep
+                ? "bg-emerald-600 text-white"
+                : "text-gray-400 hover:text-white hover:bg-gray-800"
+            }`}
+          >
+            {step}
+          </button>
+        ))}
+      </nav>
+
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {renderStep()}
+      </main>
     </div>
   )
 }
