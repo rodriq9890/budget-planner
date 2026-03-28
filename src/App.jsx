@@ -1,3 +1,4 @@
+import MonthlyExpenses from "./components/MonthlyExpenses"
 import { useState } from "react"
 import IncomeAndTaxes from "./components/IncomeAndTaxes"
 
@@ -5,21 +6,42 @@ const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings G
 
 function App() {
   const [currentStep, setCurrentStep] = useState(0)
-  const [data, setData] = useState({
+  const [data, setData] = useState(() => {
+    const saved = localStorage.getItem("budgetData")
+    return saved
+      ? JSON.parse(saved)
+      : {
+          grossSalary: 0,
+          retirement401k: 0,
+          hsa: 0,
+          healthInsurance: 0,
+          dental: 0,
+          vision: 0,
+        }
+  })
+const updateData = (newData) => {
+  setData(newData)
+  localStorage.setItem("budgetData", JSON.stringify(newData))
+}
+
+const resetData = () => {
+  const blank = {
     grossSalary: 0,
     retirement401k: 0,
     hsa: 0,
     healthInsurance: 0,
     dental: 0,
     vision: 0,
-  })
-
+  }
+  setData(blank)
+  localStorage.removeItem("budgetData")
+}
   const renderStep = () => {
     switch (currentStep) {
       case 0:
-        return <IncomeAndTaxes data={data} setData={setData} />
+        return <IncomeAndTaxes data={data} setData={updateData} />
       case 1:
-        return <p className="text-gray-500">Monthly Expenses — coming soon</p>
+        return <MonthlyExpenses data={data} setData={updateData} />
       case 2:
         return <p className="text-gray-500">Subscriptions — coming soon</p>
       case 3:
@@ -35,6 +57,15 @@ function App() {
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <header className="border-b border-gray-800 px-6 py-4">
         <h1 className="text-2xl font-bold tracking-tight text-white">Budget Planner</h1>
+        <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Budget Planner</h1>
+          <button
+            onClick={resetData}
+            className="text-sm text-gray-500 hover:text-red-400 transition-colors"
+          >
+            Reset All
+          </button>
+        </header>        
       </header>
 
       <nav className="px-6 py-4 flex gap-2 border-b border-gray-800">
