@@ -77,6 +77,13 @@ export function calculateTaxBreakdown(data) {
   // Get labels for display
   const stateData = getStateBrackets(stateCode)
   const hasStateTax = stateData && stateData.type !== "none"
+  const payFrequency = data.payFrequency || "biweekly"
+  const paychecksPerYear = {
+    weekly: 52,
+    biweekly: 26,
+    semimonthly: 24,
+    monthly: 12,
+  }[payFrequency]
 
   return {
     gross,
@@ -91,9 +98,10 @@ export function calculateTaxBreakdown(data) {
     totalDeductions,
     annualNet,
     monthlyNet: annualNet / 12,
-    biweeklyNet: annualNet / 26,
+    biweeklyNet: annualNet / paychecksPerYear,
+    paychecksPerYear,
+    payFrequency,
     stateCode,
     cityName,
     hasStateTax,
-  }
-}
+  }}

@@ -105,19 +105,94 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
         {/* Income */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Income</h3>
-          <label className="block">
-            <span className={`text-sm ${t.muted}`}>Annual Gross Salary</span>
-            <div className="relative mt-1">
-              <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
-              <input
-                type="number"
-                value={data.grossSalary || ""}
-                onChange={(e) => handleChange("grossSalary", Number(e.target.value))}
-                placeholder="0"
-                className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
-              />
+
+          <div className="flex gap-2">
+            {["salary", "hourly"].map((type) => (
+              <button
+                key={type}
+                onClick={() => handleChange("incomeType", type)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  (data.incomeType || "salary") === type
+                    ? "bg-emerald-600 text-white"
+                    : isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                {type === "salary" ? "Annual Salary" : "Hourly Wage"}
+              </button>
+            ))}
+          </div>
+
+          {(data.incomeType || "salary") === "salary" ? (
+            <label className="block">
+              <span className={`text-sm ${t.muted}`}>Annual Gross Salary</span>
+              <div className="relative mt-1">
+                <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                <input
+                  type="number"
+                  value={data.grossSalary || ""}
+                  onChange={(e) => handleChange("grossSalary", Number(e.target.value))}
+                  placeholder="0"
+                  className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                />
+              </div>
+            </label>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block">
+                <span className={`text-sm ${t.muted}`}>Hourly Rate</span>
+                <div className="relative mt-1">
+                  <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                  <input
+                    type="number"
+                    value={data.hourlyRate || ""}
+                    onChange={(e) => {
+                      const rate = Number(e.target.value)
+                      const hours = data.hoursPerWeek || 40
+                      setData({ ...data, hourlyRate: rate, grossSalary: rate * hours * 52 })
+                    }}
+                    placeholder="0"
+                    className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                  />
+                </div>
+              </label>
+              <label className="block">
+                <span className={`text-sm ${t.muted}`}>Hours per Week</span>
+                <input
+                  type="number"
+                  value={data.hoursPerWeek || 40}
+                  onChange={(e) => {
+                    const hours = Number(e.target.value)
+                    const rate = data.hourlyRate || 0
+                    setData({ ...data, hoursPerWeek: hours, grossSalary: rate * hours * 52 })
+                  }}
+                  placeholder="40"
+                  className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                />
+              </label>
             </div>
+          )}
+
+          <label className="block">
+            <span className={`text-sm ${t.muted}`}>Pay Frequency</span>
+            <select
+              value={data.payFrequency || "biweekly"}
+              onChange={(e) => handleChange("payFrequency", e.target.value)}
+              className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+            >
+              <option value="weekly">Weekly (52 paychecks/yr)</option>
+              <option value="biweekly">Bi-Weekly (26 paychecks/yr)</option>
+              <option value="semimonthly">Semi-Monthly (24 paychecks/yr)</option>
+              <option value="monthly">Monthly (12 paychecks/yr)</option>
+            </select>
           </label>
+
+          {(data.incomeType || "salary") === "hourly" && data.hourlyRate > 0 && (
+            <div className={`border rounded-lg p-3 text-sm ${t.card}`}>
+              <span className={t.muted}>Calculated annual salary: </span>
+              <span className="text-emerald-400 font-medium">{formatMoney(data.grossSalary)}</span>
+              <span className={t.muted}> ({data.hourlyRate}/hr × {data.hoursPerWeek || 40}hrs × 52 weeks)</span>
+            </div>
+          )}
         </div>
 
         {/* Pre-Tax Deductions */}
@@ -176,7 +251,7 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-lg font-semibold">{formatMoney(results.biweeklyNet)}</p>
-              <p className={`text-xs ${t.subtle}`}>per paycheck</p>
+              <p className={`text-xs ${t.subtle}`}>per paycheck ({data.payFrequency || "biweekly"})</p>
             </div>
             <div>
               <p className="text-lg font-semibold">{formatMoney(results.annualNet)}</p>
