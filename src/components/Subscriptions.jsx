@@ -1,11 +1,8 @@
 import IncomeBar from "./IncomeBar"
-function Subscriptions({ data, setData }) {
-  const monthlySubs = data.monthlySubs || [
-    { id: 1, name: "", amount: 0 },
-  ]
-  const annualSubs = data.annualSubs || [
-    { id: 1, name: "", amount: 0 },
-  ]
+
+function Subscriptions({ data, setData, t, isDark }) {
+  const monthlySubs = data.monthlySubs || [{ id: 1, name: "", amount: 0 }]
+  const annualSubs = data.annualSubs || [{ id: 1, name: "", amount: 0 }]
 
   const updateList = (key, list, id, field, value) => {
     const updated = list.map((item) =>
@@ -47,10 +44,10 @@ function Subscriptions({ data, setData }) {
               value={item.name}
               onChange={(e) => updateList(key, list, item.id, "name", e.target.value)}
               placeholder="Name"
-              className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              className={`flex-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
             />
             <div className="relative w-36">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
               <input
                 type="number"
                 value={item.amount || ""}
@@ -58,13 +55,13 @@ function Subscriptions({ data, setData }) {
                   updateList(key, list, item.id, "amount", Number(e.target.value))
                 }
                 placeholder="0"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
               />
             </div>
-            <span className="text-xs text-gray-600 w-8">{amountLabel}</span>
+            <span className={`text-xs w-8 ${t.subtle}`}>{amountLabel}</span>
             <button
               onClick={() => removeItem(key, list, item.id)}
-              className="text-gray-600 hover:text-red-400 transition-colors p-1"
+              className={`${t.subtle} hover:text-red-400 transition-colors p-1`}
             >
               ✕
             </button>
@@ -82,91 +79,88 @@ function Subscriptions({ data, setData }) {
 
   return (
     <div>
-      <IncomeBar data={data} />
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <IncomeBar data={data} t={t} />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         <div className="lg:col-span-3 space-y-10">
-            <div>
-            <h2 className="text-xl font-semibold text-white mb-1">Subscriptions & Memberships</h2>
-            <p className="text-gray-500 text-sm">
-                Monthly subscriptions and annual fees. Annual costs are converted to monthly automatically.
+          <div>
+            <h2 className={`text-xl font-semibold mb-1 ${t.heading}`}>Subscriptions & Memberships</h2>
+            <p className={`${t.subtle} text-sm`}>
+              Monthly subscriptions and annual fees. Annual costs are converted to monthly automatically.
             </p>
-            </div>
+          </div>
 
-            {renderList("monthlySubs", monthlySubs, "Monthly Subscriptions", "/mo")}
-            {renderList("annualSubs", annualSubs, "Annual Subscriptions & Card Fees", "/yr")}
+          {renderList("monthlySubs", monthlySubs, "Monthly Subscriptions", "/mo")}
+          {renderList("annualSubs", annualSubs, "Annual Subscriptions & Card Fees", "/yr")}
         </div>
 
-        {/* Right side — Summary */}
         <div className="lg:col-span-2">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sticky top-8 space-y-6">
+          <div className={`border rounded-xl p-6 sticky top-8 space-y-6 ${t.card}`}>
             <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
-                Subscriptions Summary
+              Subscriptions Summary
             </h3>
 
             <div>
-                <p className="text-3xl font-bold text-white">{formatMoney(grandTotal)}</p>
-                <p className="text-sm text-gray-500">per month (total)</p>
+              <p className="text-3xl font-bold">{formatMoney(grandTotal)}</p>
+              <p className={`text-sm ${t.subtle}`}>per month (total)</p>
             </div>
 
             <div>
-                <p className="text-lg font-semibold text-white">{formatMoney(grandTotal * 12)}</p>
-                <p className="text-xs text-gray-500">per year</p>
+              <p className="text-lg font-semibold">{formatMoney(grandTotal * 12)}</p>
+              <p className={`text-xs ${t.subtle}`}>per year</p>
             </div>
 
-            <div className="border-t border-gray-800 pt-4 space-y-4">
-                {/* Monthly breakdown */}
-                <div className="space-y-2">
-                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Monthly</h4>
+            <div className={`border-t pt-4 space-y-4 ${t.border}`}>
+              <div className="space-y-2">
+                <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Monthly</h4>
                 {monthlySubs
-                    .filter((s) => s.amount > 0)
-                    .map((s) => (
+                  .filter((s) => s.amount > 0)
+                  .map((s) => (
                     <div key={s.id} className="flex justify-between text-sm">
-                        <span className="text-gray-400">{s.name || "Unnamed"}</span>
-                        <span className="text-white">{formatMoney(s.amount)}/mo</span>
+                      <span className={t.muted}>{s.name || "Unnamed"}</span>
+                      <span>{formatMoney(s.amount)}/mo</span>
                     </div>
-                    ))}
+                  ))}
                 {monthlyTotal > 0 && (
-                    <div className="flex justify-between text-sm font-medium border-t border-gray-800 pt-2">
-                    <span className="text-gray-300">Subtotal</span>
-                    <span className="text-white">{formatMoney(monthlyTotal)}/mo</span>
-                    </div>
+                  <div className={`flex justify-between text-sm font-medium border-t pt-2 ${t.border}`}>
+                    <span>Subtotal</span>
+                    <span>{formatMoney(monthlyTotal)}/mo</span>
+                  </div>
                 )}
-                </div>
+              </div>
 
-                {/* Annual breakdown */}
-                <div className="space-y-2">
-                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Annual (as monthly)</h4>
+              <div className="space-y-2">
+                <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Annual (as monthly)</h4>
                 {annualSubs
-                    .filter((s) => s.amount > 0)
-                    .map((s) => (
+                  .filter((s) => s.amount > 0)
+                  .map((s) => (
                     <div key={s.id} className="flex justify-between text-sm">
-                        <span className="text-gray-400">{s.name || "Unnamed"}</span>
-                        <span className="text-white">
+                      <span className={t.muted}>{s.name || "Unnamed"}</span>
+                      <span>
                         {formatMoney(s.amount / 12)}/mo
-                        <span className="text-gray-600 ml-1">({formatMoney(s.amount)}/yr)</span>
-                        </span>
+                        <span className={`ml-1 ${t.subtle}`}>({formatMoney(s.amount)}/yr)</span>
+                      </span>
                     </div>
-                    ))}
+                  ))}
                 {annualTotal > 0 && (
-                    <div className="flex justify-between text-sm font-medium border-t border-gray-800 pt-2">
-                    <span className="text-gray-300">Subtotal</span>
-                    <span className="text-white">{formatMoney(annualAsMonthly)}/mo</span>
-                    </div>
+                  <div className={`flex justify-between text-sm font-medium border-t pt-2 ${t.border}`}>
+                    <span>Subtotal</span>
+                    <span>{formatMoney(annualAsMonthly)}/mo</span>
+                  </div>
                 )}
-                </div>
+              </div>
             </div>
 
             {data.grossSalary > 0 && (
-                <div className="bg-gray-800 rounded-lg p-3 text-center">
-                <p className="text-sm text-gray-400">% of Gross Income</p>
-                <p className="text-xl font-bold text-white">
-                    {(((grandTotal * 12) / data.grossSalary) * 100).toFixed(1)}%
+              <div className={`rounded-lg p-3 text-center ${t.pill}`}>
+                <p className={`text-sm ${t.muted}`}>% of Gross Income</p>
+                <p className="text-xl font-bold">
+                  {(((grandTotal * 12) / data.grossSalary) * 100).toFixed(1)}%
                 </p>
-                </div>
+              </div>
             )}
+          </div>
         </div>
-            </div>
-        </div>
+      </div>
     </div>
   )
 }

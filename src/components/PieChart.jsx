@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-function PieChart({ slices, title, size = 200, formatMoney }) {
+function PieChart({ slices, title, size = 200, formatMoney, isDark = true }) {
   const [hovered, setHovered] = useState(null)
   const total = slices.reduce((sum, s) => sum + s.value, 0)
   if (total === 0) return null
@@ -8,6 +8,8 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
   const radius = size / 2
   const center = radius
   let cumulativeAngle = -90
+
+  const holeFill = isDark ? "#030712" : "#ffffff"
 
   const paths = slices
     .filter((s) => s.value > 0)
@@ -29,12 +31,7 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
       const largeArc = angle > 180 ? 1 : 0
       const path = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`
 
-      // Midpoint for tooltip position
-      const midAngle = ((startAngle + endAngle) / 2) * (Math.PI / 180)
-      const tooltipX = center + radius * 0.35 * Math.cos(midAngle)
-      const tooltipY = center + radius * 0.35 * Math.sin(midAngle)
-
-      return { ...slice, path, percentage, index, tooltipX, tooltipY }
+      return { ...slice, path, percentage, index }
     })
 
   const fmt = formatMoney || ((v) =>
@@ -49,10 +46,9 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
   return (
     <div className="space-y-3">
       {title && (
-        <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</h4>
+        <h4 className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-gray-500" : "text-gray-400"}`}>{title}</h4>
       )}
       <div className="flex items-start gap-4">
-        {/* Chart */}
         <div className="relative shrink-0">
           <svg width={size} height={size}>
             {paths.map((p) => (
@@ -60,7 +56,7 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
                 key={p.index}
                 d={p.path}
                 fill={p.color}
-                stroke="#030712"
+                stroke={holeFill}
                 strokeWidth="2"
                 opacity={hovered === null || hovered === p.index ? 1 : 0.3}
                 onMouseEnter={() => setHovered(p.index)}
@@ -68,16 +64,16 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
                 className="transition-opacity duration-200 cursor-pointer"
               />
             ))}
-            <circle cx={center} cy={center} r={radius * 0.55} fill="#030712" />
+            <circle cx={center} cy={center} r={radius * 0.55} fill={holeFill} />
 
-            {/* Center text on hover */}
             {hovered !== null && paths[hovered] && (
               <>
                 <text
                   x={center}
                   y={center - 8}
                   textAnchor="middle"
-                  className="fill-white text-sm font-bold"
+                  className="text-sm font-bold"
+                  fill={isDark ? "#ffffff" : "#111827"}
                 >
                   {fmt(paths[hovered].value)}
                 </text>
@@ -85,8 +81,8 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
                   x={center}
                   y={center + 12}
                   textAnchor="middle"
-                  className="fill-gray-400"
                   fontSize="11"
+                  fill={isDark ? "#9ca3af" : "#6b7280"}
                 >
                   {(paths[hovered].percentage * 100).toFixed(1)}%
                 </text>
@@ -95,7 +91,6 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
           </svg>
         </div>
 
-        {/* Legend */}
         <div className="space-y-1.5 min-w-0 pt-2">
           {paths.map((p) => (
             <div
@@ -110,8 +105,8 @@ function PieChart({ slices, title, size = 200, formatMoney }) {
                 className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: p.color }}
               />
-              <span className="text-gray-400">{p.label}</span>
-              <span className="text-white ml-auto font-medium whitespace-nowrap">
+              <span className={isDark ? "text-gray-400" : "text-gray-600"}>{p.label}</span>
+              <span className="ml-auto font-medium whitespace-nowrap">
                 {(p.percentage * 100).toFixed(1)}%
               </span>
             </div>

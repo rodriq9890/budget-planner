@@ -1,8 +1,7 @@
-import { useState } from "react"
 import { calculateTaxBreakdown } from "../utils/taxCalculator"
 import PieChart from "./PieChart"
 
-function IncomeAndTaxes({ data, setData }) {
+function IncomeAndTaxes({ data, setData, t, isDark }) {
   const handleChange = (field, value) => {
     setData({ ...data, [field]: value })
   }
@@ -20,25 +19,24 @@ function IncomeAndTaxes({ data, setData }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Left side — Inputs */}
       <div className="lg:col-span-3 space-y-8">
         <div>
-          <h2 className="text-xl font-semibold text-white mb-1">Income & Taxes</h2>
-          <p className="text-gray-500 text-sm">Enter your gross salary and pre-tax deductions.</p>
+          <h2 className="text-xl font-semibold mb-1">Income & Taxes</h2>
+          <p className={`${t.subtle} text-sm`}>Enter your gross salary and pre-tax deductions.</p>
         </div>
 
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Income</h3>
           <label className="block">
-            <span className="text-sm text-gray-400">Annual Gross Salary</span>
+            <span className={`text-sm ${t.muted}`}>Annual Gross Salary</span>
             <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
               <input
                 type="number"
                 value={data.grossSalary || ""}
                 onChange={(e) => handleChange("grossSalary", Number(e.target.value))}
                 placeholder="0"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
               />
             </div>
           </label>
@@ -48,161 +46,113 @@ function IncomeAndTaxes({ data, setData }) {
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Pre-Tax Deductions</h3>
 
           <label className="block">
-            <span className="text-sm text-gray-400">401k Contribution (%)</span>
+            <span className={`text-sm ${t.muted}`}>401k Contribution (%)</span>
             <div className="relative mt-1">
               <input
                 type="number"
                 value={data.retirement401k || ""}
                 onChange={(e) => handleChange("retirement401k", Number(e.target.value))}
                 placeholder="6"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className={`w-full rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+              <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>%</span>
             </div>
           </label>
 
           <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-sm text-gray-400">HSA (per month)</span>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  value={data.hsa || ""}
-                  onChange={(e) => handleChange("hsa", Number(e.target.value))}
-                  placeholder="0"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </label>
-
-            <label className="block">
-              <span className="text-sm text-gray-400">Health Insurance (per month)</span>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  value={data.healthInsurance || ""}
-                  onChange={(e) => handleChange("healthInsurance", Number(e.target.value))}
-                  placeholder="0"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </label>
-
-            <label className="block">
-              <span className="text-sm text-gray-400">Dental (per month)</span>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  value={data.dental || ""}
-                  onChange={(e) => handleChange("dental", Number(e.target.value))}
-                  placeholder="0"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </label>
-
-            <label className="block">
-              <span className="text-sm text-gray-400">Vision (per month)</span>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  value={data.vision || ""}
-                  onChange={(e) => handleChange("vision", Number(e.target.value))}
-                  placeholder="0"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </label>
+            {[
+              { label: "HSA (per month)", field: "hsa" },
+              { label: "Health Insurance (per month)", field: "healthInsurance" },
+              { label: "Dental (per month)", field: "dental" },
+              { label: "Vision (per month)", field: "vision" },
+            ].map(({ label, field }) => (
+              <label key={field} className="block">
+                <span className={`text-sm ${t.muted}`}>{label}</span>
+                <div className="relative mt-1">
+                  <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                  <input
+                    type="number"
+                    value={data[field] || ""}
+                    onChange={(e) => handleChange(field, Number(e.target.value))}
+                    placeholder="0"
+                    className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                  />
+                </div>
+              </label>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Right side — Live Results */}
       <div className="lg:col-span-2">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sticky top-8 space-y-6">
+        <div className={`border rounded-xl p-6 sticky top-8 space-y-6 ${t.card}`}>
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Take-Home Pay</h3>
 
-          {/* Big number */}
           <div>
-            <p className="text-3xl font-bold text-white">{formatMoney(results.monthlyNet)}</p>
-            <p className="text-sm text-gray-500">per month</p>
+            <p className="text-3xl font-bold">{formatMoney(results.monthlyNet)}</p>
+            <p className={`text-sm ${t.subtle}`}>per month</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-lg font-semibold text-white">{formatMoney(results.biweeklyNet)}</p>
-              <p className="text-xs text-gray-500">per paycheck</p>
+              <p className="text-lg font-semibold">{formatMoney(results.biweeklyNet)}</p>
+              <p className={`text-xs ${t.subtle}`}>per paycheck</p>
             </div>
             <div>
-              <p className="text-lg font-semibold text-white">{formatMoney(results.annualNet)}</p>
-              <p className="text-xs text-gray-500">per year</p>
+              <p className="text-lg font-semibold">{formatMoney(results.annualNet)}</p>
+              <p className={`text-xs ${t.subtle}`}>per year</p>
             </div>
           </div>
 
-          {/* Breakdown */}
-          <div className="border-t border-gray-800 pt-4 space-y-3">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tax Breakdown (Annual)</h4>
-
+          <div className={`border-t pt-4 space-y-3 ${t.border}`}>
+            <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Tax Breakdown (Annual)</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Federal</span>
-                <span className="text-white">{formatMoney(results.federalTax)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">NY State</span>
-                <span className="text-white">{formatMoney(results.nyStateTax)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">NYC City</span>
-                <span className="text-white">{formatMoney(results.nycTax)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Social Security</span>
-                <span className="text-white">{formatMoney(results.socialSecurity)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Medicare</span>
-                <span className="text-white">{formatMoney(results.medicare)}</span>
-              </div>
-              <div className="flex justify-between border-t border-gray-800 pt-2 font-medium">
-                <span className="text-gray-300">Total Tax</span>
+              {[
+                { label: "Federal", value: results.federalTax },
+                { label: "NY State", value: results.nyStateTax },
+                { label: "NYC City", value: results.nycTax },
+                { label: "Social Security", value: results.socialSecurity },
+                { label: "Medicare", value: results.medicare },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between">
+                  <span className={t.muted}>{label}</span>
+                  <span>{formatMoney(value)}</span>
+                </div>
+              ))}
+              <div className={`flex justify-between border-t pt-2 font-medium ${t.border}`}>
+                <span>Total Tax</span>
                 <span className="text-red-400">{formatMoney(results.totalTax)}</span>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-4 space-y-2 text-sm">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pre-Tax Deductions (Annual)</h4>
+          <div className={`border-t pt-4 space-y-2 text-sm ${t.border}`}>
+            <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Pre-Tax Deductions (Annual)</h4>
             <div className="flex justify-between">
-              <span className="text-gray-400">401k + Benefits</span>
-              <span className="text-white">{formatMoney(results.preTaxDeductions)}</span>
+              <span className={t.muted}>401k + Benefits</span>
+              <span>{formatMoney(results.preTaxDeductions)}</span>
             </div>
-            <div className="flex justify-between border-t border-gray-800 pt-2 font-medium">
-              <span className="text-gray-300">Total Deductions</span>
+            <div className={`flex justify-between border-t pt-2 font-medium ${t.border}`}>
+              <span>Total Deductions</span>
               <span className="text-red-400">{formatMoney(results.totalDeductions)}</span>
             </div>
           </div>
 
-          {/* Effective rate */}
           {results.gross > 0 && (
-            <div className="bg-gray-800 rounded-lg p-3 text-center">
-              <p className="text-sm text-gray-400">Effective Tax Rate</p>
-              <p className="text-xl font-bold text-white">
+            <div className={`rounded-lg p-3 text-center ${t.pill}`}>
+              <p className={`text-sm ${t.muted}`}>Effective Tax Rate</p>
+              <p className="text-xl font-bold">
                 {((results.totalTax / results.gross) * 100).toFixed(1)}%
               </p>
             </div>
           )}
 
-          {/* ADD PIE CHARTS HERE */}
           {results.gross > 0 && (
-            <div className="border-t border-gray-800 pt-4 space-y-6">
+            <div className={`border-t pt-4 space-y-6 ${t.border}`}>
               <PieChart
                 title="Pre-Tax Breakdown"
                 size={180}
+                isDark={isDark}
                 slices={[
                   { label: "Federal", value: results.federalTax, color: "#ef4444" },
                   { label: "NY State", value: results.nyStateTax, color: "#f97316" },
@@ -215,6 +165,7 @@ function IncomeAndTaxes({ data, setData }) {
               <PieChart
                 title="Post-Tax (Take-Home Usage)"
                 size={180}
+                isDark={isDark}
                 slices={[
                   { label: "Take-Home Pay", value: results.annualNet, color: "#10b981" },
                   { label: "Total Tax", value: results.totalTax, color: "#ef4444" },
@@ -223,7 +174,6 @@ function IncomeAndTaxes({ data, setData }) {
               />
             </div>
           )}
-
         </div>
       </div>
     </div>
