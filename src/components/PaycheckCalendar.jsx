@@ -51,28 +51,102 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
 
   const paycheckDates = getPaycheckDates(selectedYear)
 
-  // Group by month
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const monthDate = new Date(selectedYear, i, 1)
-    const monthName = monthDate.toLocaleDateString("en-US", { month: "long" })
-    const paychecks = paycheckDates.filter((d) => d.getMonth() === i)
-    const totalIncome = paychecks.length * results.biweeklyNet
-    const surplus = totalIncome - totalMonthlyCommitted
+// Calculate working days per month
+    function getWorkingDays(year, month) {
+        let count = 0
+        const daysInMonth = new Date(year, month + 1, 0).getDate()
+        for (let d = 1; d <= daysInMonth; d++) {
+            const day = new Date(year, month, d).getDay()
+            if (day !== 0 && day !== 6) count++
+        }
+        return count
+        }
 
-    // Load actual spending from data
-    const key = `actual_${selectedYear}_${i}`
-    const actual = data[key] ?? null
+        const isHourly = (data.incomeType || "salary") === "hourly"
+        const hourlyRate = data.hourlyRate || 0
+        const hoursPerDay = (data.hoursPerWeek || 40) / 5
 
-    return {
-      index: i,
-      name: monthName,
-      paychecks,
-      totalIncome,
-      surplus,
-      actual,
-      key,
-    }
-  })
+        const months = Array.from({ length: 12 }, (_, i) => {
+        const monthDate = new Date(selectedYear, i, 1)
+        const monthName = monthDate.toLocaleDateString("en-US", { month: "long" })
+        const paychecks = paycheckDates.filter((d) => d.getMonth() === i)
+        const workingDays = getWorkingDays(selectedYear, i)
+
+        let totalIncome
+        let paycheckDetails = []
+
+        if (isHourly && payFrequency === "semimonthly") {
+            // Semi-monthly: 1st and 15th
+            // Paycheck on the 1st covers prev month 16th to end of prev month
+            // Paycheck on the 15th covers 1st to 15th of current month
+
+            paychecks.forEach((payDate) => {
+            let periodStart, periodEnd
+            if (payDate.getDate() <= 1) {
+                // 1st paycheck — covers previous month 16th to end
+                const prevMonth = i === 0 ? 11 : i - 1
+                const prevYear = i === 0 ? selectedYear - 1 : selectedYear
+                const prevMonthDays = new Date(prevYear, prevMonth + 1, 0).getDate()
+                periodStart = new Date(prevYear, prevMonth, 16)
+                periodEnd = new Date(prevYear, prevMonth, prevMonthDays)
+            } else {
+                // 15th paycheck — covers 1st to 15th of current month
+                periodStart = new Date(selectedYear, i, 1)
+                periodEnd = new Date(selectedYear, i, 15)
+            }
+
+            // Count working days in the period
+            let periodWorkingDays = 0
+            let current = new Date(periodStart)
+            while (current <= periodEnd) {
+                const day = current.getDay()
+                if (day !== 0 && day !== 6) periodWorkingDays++
+                current.setDate(current.getDate() + 1)
+            }
+
+            const periodHours = periodWorkingDays * hoursPerDay
+            const grossPay = periodHours * hourlyRate
+            const taxRate = results.gross > 0 ? results.totalDeductions / results.gross : 0
+            const netPay = grossPay * (1 - taxRate)
+
+            paycheckDetails.push({
+                date: payDate,
+                periodStart,
+                periodEnd,
+                workingDays: periodWorkingDays,
+                hours: periodHours,
+                net: netPay,
+            })
+            })
+
+            totalIncome = paycheckDetails.reduce((sum, p) => sum + p.net, 0)
+        } else if (isHourly) {
+            // For other frequencies, distribute based on working days
+            const monthlyHours = workingDays * hoursPerDay
+            const grossMonthly = monthlyHours * hourlyRate
+            const taxRate = results.gross > 0 ? results.totalDeductions / results.gross : 0
+            totalIncome = grossMonthly * (1 - taxRate)
+        } else {
+            // Salaried: income based on number of paychecks in the month
+            totalIncome = paychecks.length * results.biweeklyNet
+        }
+
+        const surplus = totalIncome - totalMonthlyCommitted
+        const key = `actual_${selectedYear}_${i}`
+        const actual = data[key] ?? null
+
+        return {
+            index: i,
+            name: monthName,
+            paychecks,
+            workingDays,
+            totalIncome,
+            surplus,
+            actual,
+            key,
+            paycheckDetails,
+        }
+        })  
 
   const fmt = (v) =>
     new Intl.NumberFormat("en-US", {
@@ -132,7 +206,7 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
           <div className={`border rounded-xl p-4 ${t.card}`}>
             <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>Annual Income</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">{fmt(totalAnnualIncome)}</p>
-            <p className={`text-xs ${t.subtle}`}>net take-home</p>
+            <p className={`text-xs ${t.subtle}`}>{isHourly ? "based on working days" : "net take-home"}</p>
           </div>
           <div className={`border rounded-xl p-4 ${t.card}`}>
             <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>Annual Committed</p>
@@ -220,14 +294,31 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
                   )}
                 </div>
 
-                {/* Paycheck dates */}
-                <div className={`text-xs ${t.subtle}`}>
-                  {month.paychecks.map((d, i) => (
-                    <span key={i}>
-                      {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      {i < month.paychecks.length - 1 ? " • " : ""}
-                    </span>
-                  ))}
+                {/* Month details */}
+                <div className={`text-xs ${t.subtle} space-y-1`}>
+                    <div className="flex justify-between">
+                        <span>{month.workingDays} working days{isHourly ? ` (${(month.workingDays * hoursPerDay).toFixed(0)}hrs)` : ""}</span>
+                    </div>
+                    {month.paycheckDetails && month.paycheckDetails.length > 0 ? (
+                        month.paycheckDetails.map((p, i) => (
+                        <div key={i} className={`flex justify-between pt-0.5 ${i > 0 ? `border-t ${t.border}` : ""}`}>
+                            <span>
+                            {p.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {" "}({p.workingDays}d / {p.hours.toFixed(0)}hrs)
+                            </span>
+                            <span className="text-emerald-400">{fmt(p.net)}</span>
+                        </div>
+                        ))
+                    ) : (
+                        <div>
+                        {month.paychecks.map((d, i) => (
+                            <span key={i}>
+                            {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {i < month.paychecks.length - 1 ? " • " : ""}
+                            </span>
+                        ))}
+                        </div>
+                    )}
                 </div>
               </div>
             )
