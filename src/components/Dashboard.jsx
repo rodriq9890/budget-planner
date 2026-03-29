@@ -2,7 +2,7 @@ import { calculateTaxBreakdown } from "../utils/taxCalculator"
 import { exportToPDF, exportToExcel } from "../utils/exportBudget"
 import PieChart from "./PieChart"
 
-function Dashboard({ data }) {
+function Dashboard({ data, t, isDark }) {
   const results = calculateTaxBreakdown(data)
 
   const expenses = data.monthlyExpenses || []
@@ -35,7 +35,6 @@ function Dashboard({ data }) {
     return ((v / results.monthlyNet) * 100).toFixed(1) + "%"
   }
 
-  // 50/30/20 targets
   const idealNeeds = results.monthlyNet * 0.5
   const idealWants = results.monthlyNet * 0.3
   const idealSavings = results.monthlyNet * 0.2
@@ -43,7 +42,7 @@ function Dashboard({ data }) {
   if (!data.grossSalary) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500 text-lg">Enter your salary on Step 1 to see your dashboard.</p>
+        <p className={`text-lg ${t.subtle}`}>Enter your salary on Step 1 to see your dashboard.</p>
       </div>
     )
   }
@@ -52,8 +51,8 @@ function Dashboard({ data }) {
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white mb-1">Dashboard</h2>
-          <p className="text-gray-500 text-sm">Your complete financial picture at a glance.</p>
+          <h2 className={`text-xl font-semibold mb-1 ${t.heading}`}>Dashboard</h2>
+          <p className={`${t.subtle} text-sm`}>Your complete financial picture at a glance.</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -71,213 +70,116 @@ function Dashboard({ data }) {
         </div>
       </div>
 
-      {/* Top cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Gross Income</p>
-          <p className="text-2xl font-bold text-white mt-1">{fmt(data.grossSalary / 12)}</p>
-          <p className="text-xs text-gray-600">{fmt(data.grossSalary)}/yr</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Take-Home</p>
-          <p className="text-2xl font-bold text-emerald-400 mt-1">{fmt(results.monthlyNet)}</p>
-          <p className="text-xs text-gray-600">{fmt(results.annualNet)}/yr</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Total Committed</p>
-          <p className="text-2xl font-bold text-white mt-1">{fmt(totalSpent)}</p>
-          <p className="text-xs text-gray-600">{pct(totalSpent)} of take-home</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Remaining</p>
-          <p className={`text-2xl font-bold mt-1 ${remaining >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-            {fmt(remaining)}
-          </p>
-          <p className="text-xs text-gray-600">free to spend</p>
-        </div>
+        {[
+          { label: "Gross Income", value: fmt(data.grossSalary / 12), sub: `${fmt(data.grossSalary)}/yr`, color: "" },
+          { label: "Take-Home", value: fmt(results.monthlyNet), sub: `${fmt(results.annualNet)}/yr`, color: "text-emerald-400" },
+          { label: "Total Committed", value: fmt(totalSpent), sub: `${pct(totalSpent)} of take-home`, color: "" },
+          { label: "Remaining", value: fmt(remaining), sub: "free to spend", color: remaining >= 0 ? "text-emerald-400" : "text-red-400" },
+        ].map(({ label, value, sub, color }) => (
+          <div key={label} className={`border rounded-xl p-5 ${t.card}`}>
+            <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>{label}</p>
+            <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+            <p className={`text-xs ${t.subtle}`}>{sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Budget breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* 50/30/20 comparison */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
+        <div className={`border rounded-xl p-6 space-y-5 ${t.card}`}>
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
             50 / 30 / 20 Rule
           </h3>
 
-          {/* Needs */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Needs (50%)</span>
-              <span className="text-white">{fmt(totalNeeds)} / {fmt(idealNeeds)}</span>
+          {[
+            { label: "Needs (50%)", value: totalNeeds, ideal: idealNeeds, color: "bg-blue-500" },
+            { label: "Wants (30%)", value: totalWants, ideal: idealWants, color: totalWants > idealWants ? "bg-red-500" : "bg-purple-500" },
+            { label: "Savings (20%)", value: totalSavings, ideal: idealSavings, color: "bg-emerald-500" },
+          ].map(({ label, value, ideal, color }) => (
+            <div key={label} className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className={t.muted}>{label}</span>
+                <span>{fmt(value)} / {fmt(ideal)}</span>
+              </div>
+              <div className={`w-full rounded-full h-3 ${t.pill}`}>
+                <div
+                  className={`${color} h-3 rounded-full transition-all duration-500`}
+                  style={{ width: `${Math.min(100, (value / ideal) * 100)}%` }}
+                />
+              </div>
+              <p className={`text-xs ${t.subtle}`}>
+                {value <= ideal
+                  ? `${fmt(ideal - value)} under budget`
+                  : `${fmt(value - ideal)} over budget`}
+              </p>
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-3 relative">
-              <div
-                className="bg-blue-500 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (totalNeeds / idealNeeds) * 100)}%` }}
-              />
-              <div
-                className="absolute top-0 h-3 w-0.5 bg-white/50"
-                style={{ left: "100%" }}
-              />
-            </div>
-            <p className="text-xs text-gray-600">
-              {totalNeeds <= idealNeeds
-                ? `${fmt(idealNeeds - totalNeeds)} under budget`
-                : `${fmt(totalNeeds - idealNeeds)} over budget`}
-            </p>
-          </div>
-
-          {/* Wants */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Wants (30%)</span>
-              <span className="text-white">{fmt(totalWants)} / {fmt(idealWants)}</span>
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-3">
-              <div
-                className={`h-3 rounded-full transition-all duration-500 ${
-                  totalWants > idealWants ? "bg-red-500" : "bg-purple-500"
-                }`}
-                style={{ width: `${Math.min(100, (totalWants / idealWants) * 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-600">
-              {totalWants <= idealWants
-                ? `${fmt(idealWants - totalWants)} under budget`
-                : `${fmt(totalWants - idealWants)} over budget`}
-            </p>
-          </div>
-
-          {/* Savings */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Savings (20%)</span>
-              <span className="text-white">{fmt(totalSavings)} / {fmt(idealSavings)}</span>
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-3">
-              <div
-                className="bg-emerald-500 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (totalSavings / idealSavings) * 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-600">
-              {totalSavings >= idealSavings
-                ? `${fmt(totalSavings - idealSavings)} above target`
-                : `${fmt(idealSavings - totalSavings)} below target`}
-            </p>
-          </div>
+          ))}
         </div>
 
-        {/* Pie chart */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+        <div className={`border rounded-xl p-6 space-y-4 ${t.card}`}>
           <PieChart
             title="Monthly Budget Breakdown"
             size={200}
             formatMoney={fmt}
+            isDark={isDark}
             slices={[
               { label: "Needs", value: totalNeeds, color: "#3b82f6" },
               { label: "Wants", value: totalWants, color: "#a855f7" },
               { label: "Savings", value: totalSavings, color: "#10b981" },
-              { label: "Remaining", value: Math.max(0, remaining), color: "#374151" },
+              { label: "Remaining", value: Math.max(0, remaining), color: isDark ? "#374151" : "#d1d5db" },
             ]}
           />
         </div>
       </div>
 
-      {/* Detailed breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Needs */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <h4 className="text-sm font-medium text-white">Needs</h4>
-            <span className="text-sm text-gray-500 ml-auto">{fmt(totalNeeds)}/mo</span>
-          </div>
-          <div className="space-y-1.5">
-            {expenses
-              .filter((e) => e.amount > 0)
-              .map((e) => (
-                <div key={e.id} className="flex justify-between text-sm">
-                  <span className="text-gray-500">{e.name}</span>
-                  <span className="text-gray-300">{fmt(e.amount)}</span>
+        {[
+          { label: "Needs", color: "bg-blue-500", total: totalNeeds, items: expenses.filter((e) => e.amount > 0).map((e) => ({ key: e.id, name: e.name, amount: e.amount })) },
+          { label: "Wants", color: "bg-purple-500", total: totalWants, items: [
+            ...monthlySubs.filter((s) => s.amount > 0).map((s) => ({ key: `m${s.id}`, name: s.name, amount: s.amount })),
+            ...annualSubs.filter((s) => s.amount > 0).map((s) => ({ key: `a${s.id}`, name: s.name, amount: s.amount / 12 })),
+          ]},
+          { label: "Savings", color: "bg-emerald-500", total: totalSavings, items: [
+            ...(emergencyDeposit > 0 ? [{ key: "ef", name: "Emergency Fund", amount: emergencyDeposit }] : []),
+            ...extraGoals.filter((g) => g.amount > 0).map((g) => ({ key: g.id, name: g.name, amount: g.amount })),
+          ]},
+        ].map(({ label, color, total, items }) => (
+          <div key={label} className={`border rounded-xl p-5 space-y-3 ${t.card}`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${color}`} />
+              <h4 className="text-sm font-medium">{label}</h4>
+              <span className={`text-sm ml-auto ${t.subtle}`}>{fmt(total)}/mo</span>
+            </div>
+            <div className="space-y-1.5">
+              {items.map((item) => (
+                <div key={item.key} className="flex justify-between text-sm">
+                  <span className={t.muted}>{item.name}</span>
+                  <span>{fmt(item.amount)}/mo</span>
                 </div>
               ))}
+            </div>
           </div>
-        </div>
-
-        {/* Wants */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-purple-500" />
-            <h4 className="text-sm font-medium text-white">Wants</h4>
-            <span className="text-sm text-gray-500 ml-auto">{fmt(totalWants)}/mo</span>
-          </div>
-          <div className="space-y-1.5">
-            {monthlySubs
-              .filter((s) => s.amount > 0)
-              .map((s) => (
-                <div key={s.id} className="flex justify-between text-sm">
-                  <span className="text-gray-500">{s.name}</span>
-                  <span className="text-gray-300">{fmt(s.amount)}/mo</span>
-                </div>
-              ))}
-            {annualSubs
-              .filter((s) => s.amount > 0)
-              .map((s) => (
-                <div key={s.id} className="flex justify-between text-sm">
-                  <span className="text-gray-500">{s.name}</span>
-                  <span className="text-gray-300">{fmt(s.amount / 12)}/mo</span>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Savings */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
-            <h4 className="text-sm font-medium text-white">Savings</h4>
-            <span className="text-sm text-gray-500 ml-auto">{fmt(totalSavings)}/mo</span>
-          </div>
-          <div className="space-y-1.5">
-            {emergencyDeposit > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Emergency Fund</span>
-                <span className="text-gray-300">{fmt(emergencyDeposit)}/mo</span>
-              </div>
-            )}
-            {extraGoals
-              .filter((g) => g.amount > 0)
-              .map((g) => (
-                <div key={g.id} className="flex justify-between text-sm">
-                  <span className="text-gray-500">{g.name}</span>
-                  <span className="text-gray-300">{fmt(g.amount)}/mo</span>
-                </div>
-              ))}
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Savings rate */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className={`border rounded-xl p-6 ${t.card}`}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
               Savings Rate
             </h3>
-            <p className="text-gray-500 text-xs mt-1">
+            <p className={`${t.subtle} text-xs mt-1`}>
               Including 401k and HSA contributions
             </p>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold text-white">
+            <p className="text-3xl font-bold">
               {((
                 (totalSavings * 12 + (data.grossSalary * (data.retirement401k || 0)) / 100 + (data.hsa || 0) * 12) /
                 data.grossSalary
               ) * 100).toFixed(1)}%
             </p>
-            <p className="text-xs text-gray-500">of gross income</p>
+            <p className={`text-xs ${t.subtle}`}>of gross income</p>
           </div>
         </div>
       </div>
