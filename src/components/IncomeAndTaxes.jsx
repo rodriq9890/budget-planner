@@ -1,4 +1,5 @@
 import { calculateTaxBreakdown } from "../utils/taxCalculator"
+import { getAllStates, getCitiesForState, getStateFromZip } from "../utils/stateTaxData"
 import PieChart from "./PieChart"
 
 function IncomeAndTaxes({ data, setData, t, isDark }) {
@@ -6,7 +7,26 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
     setData({ ...data, [field]: value })
   }
 
+  const handleZipChange = (zip) => {
+    const updates = { ...data, zipCode: zip }
+    if (zip.length >= 5) {
+      const result = getStateFromZip(zip)
+      if (result) {
+        updates.stateCode = result.stateCode
+        updates.cityName = result.city || ""
+      }
+    }
+    setData(updates)
+  }
+
+  const handleStateChange = (stateCode) => {
+    const cities = getCitiesForState(stateCode)
+    setData({ ...data, stateCode, cityName: cities.length > 0 ? "" : "" })
+  }
+
   const results = calculateTaxBreakdown(data)
+  const allStates = getAllStates()
+  const availableCities = getCitiesForState(data.stateCode || "")
 
   const formatMoney = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -21,10 +41,68 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
       <div className="lg:col-span-3 space-y-8">
         <div>
-          <h2 className="text-xl font-semibold mb-1">Income & Taxes</h2>
-          <p className={`${t.subtle} text-sm`}>Enter your gross salary and pre-tax deductions.</p>
+          <h2 className={`text-xl font-semibold mb-1 ${t.heading}`}>Income & Taxes</h2>
+          <p className={`${t.subtle} text-sm`}>Enter your location, gross salary, and pre-tax deductions.</p>
         </div>
 
+        {/* Location */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Location</h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className={`text-sm ${t.muted}`}>Zip Code</span>
+              <input
+                type="text"
+                maxLength={5}
+                value={data.zipCode || ""}
+                onChange={(e) => handleZipChange(e.target.value.replace(/\D/g, ""))}
+                placeholder="10001"
+                className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+              />
+            </label>
+
+            <label className="block">
+              <span className={`text-sm ${t.muted}`}>State</span>
+              <select
+                value={data.stateCode || ""}
+                onChange={(e) => handleStateChange(e.target.value)}
+                className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+              >
+                <option value="">Select state</option>
+                {allStates.map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.name}{s.noTax ? " (no income tax)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {availableCities.length > 0 && (
+            <label className="block">
+              <span className={`text-sm ${t.muted}`}>City (local tax)</span>
+              <select
+                value={data.cityName || ""}
+                onChange={(e) => handleChange("cityName", e.target.value)}
+                className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+              >
+                <option value="">None</option>
+                {availableCities.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {data.stateCode && !results.hasStateTax && (
+            <div className="bg-emerald-900/20 border border-emerald-800 rounded-lg p-3 text-sm text-emerald-400">
+              {allStates.find((s) => s.code === data.stateCode)?.name} has no state income tax!
+            </div>
+          )}
+        </div>
+
+        {/* Income */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Income</h3>
           <label className="block">
@@ -42,6 +120,7 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
           </label>
         </div>
 
+        {/* Pre-Tax Deductions */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Pre-Tax Deductions</h3>
 
@@ -84,6 +163,7 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
         </div>
       </div>
 
+      {/* Right side — Live Results */}
       <div className="lg:col-span-2">
         <div className={`border rounded-xl p-6 sticky top-8 space-y-6 ${t.card}`}>
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Take-Home Pay</h3>
@@ -107,18 +187,32 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
           <div className={`border-t pt-4 space-y-3 ${t.border}`}>
             <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Tax Breakdown (Annual)</h4>
             <div className="space-y-2 text-sm">
-              {[
-                { label: "Federal", value: results.federalTax },
-                { label: "NY State", value: results.nyStateTax },
-                { label: "NYC City", value: results.nycTax },
-                { label: "Social Security", value: results.socialSecurity },
-                { label: "Medicare", value: results.medicare },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex justify-between">
-                  <span className={t.muted}>{label}</span>
-                  <span>{formatMoney(value)}</span>
+              <div className="flex justify-between">
+                <span className={t.muted}>Federal</span>
+                <span>{formatMoney(results.federalTax)}</span>
+              </div>
+              {results.hasStateTax && (
+                <div className="flex justify-between">
+                  <span className={t.muted}>
+                    {allStates.find((s) => s.code === data.stateCode)?.name || "State"}
+                  </span>
+                  <span>{formatMoney(results.stateTax)}</span>
                 </div>
-              ))}
+              )}
+              {results.cityTax > 0 && (
+                <div className="flex justify-between">
+                  <span className={t.muted}>{data.cityName}</span>
+                  <span>{formatMoney(results.cityTax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className={t.muted}>Social Security</span>
+                <span>{formatMoney(results.socialSecurity)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className={t.muted}>Medicare</span>
+                <span>{formatMoney(results.medicare)}</span>
+              </div>
               <div className={`flex justify-between border-t pt-2 font-medium ${t.border}`}>
                 <span>Total Tax</span>
                 <span className="text-red-400">{formatMoney(results.totalTax)}</span>
@@ -155,8 +249,8 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
                 isDark={isDark}
                 slices={[
                   { label: "Federal", value: results.federalTax, color: "#ef4444" },
-                  { label: "NY State", value: results.nyStateTax, color: "#f97316" },
-                  { label: "NYC", value: results.nycTax, color: "#eab308" },
+                  ...(results.hasStateTax ? [{ label: "State", value: results.stateTax, color: "#f97316" }] : []),
+                  ...(results.cityTax > 0 ? [{ label: data.cityName, value: results.cityTax, color: "#eab308" }] : []),
                   { label: "FICA", value: results.socialSecurity + results.medicare, color: "#f43f5e" },
                   { label: "401k + Benefits", value: results.preTaxDeductions, color: "#8b5cf6" },
                   { label: "Take-Home", value: results.annualNet, color: "#10b981" },
