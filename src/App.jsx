@@ -5,6 +5,7 @@ import MonthlyExpenses from "./components/MonthlyExpenses"
 import Subscriptions from "./components/Subscriptions"
 import SavingsGoals from "./components/SavingsGoals"
 import Dashboard from "./components/Dashboard"
+import LandingPage from "./components/LandingPage"
 import { signInWithGoogle, signOutUser, onAuthChange, saveBudgetData, loadBudgetData } from "./utils/firebase"
 
 const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings Goals", "Dashboard"]
@@ -19,12 +20,18 @@ const BLANK_DATA = {
 }
 
 function App() {
+  
   const [currentStep, setCurrentStep] = useState(() => {
     const saved = localStorage.getItem("budgetStep")
     return saved ? Number(saved) : 0
   })
 
   const [showAuth, setShowAuth] = useState(false)
+
+  const [showLanding, setShowLanding] = useState(() => {
+    const visited = localStorage.getItem("budgetVisited")
+    return !visited
+  })
 
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem("budgetData")
@@ -139,7 +146,33 @@ function App() {
     )
   }
 
+  if (showLanding && !user) {
+    
   return (
+      <>
+        <LandingPage
+          onGetStarted={() => {
+            setShowLanding(false)
+            localStorage.setItem("budgetVisited", "true")
+          }}
+          onSignIn={() => {
+            setShowLanding(false)
+            localStorage.setItem("budgetVisited", "true")
+            setShowAuth(true)
+          }}
+          onToggleTheme={toggleTheme}
+          t={t}
+          isDark={isDark}
+        />
+        {showAuth && (
+          <AuthModal onClose={() => setShowAuth(false)} t={t} isDark={isDark} />
+        )}
+      </>
+    )
+  }
+  return (
+      
+    
     <div className={`min-h-screen transition-colors duration-300 ${t.bg} ${t.text}`}>
       <header className={`border-b px-6 py-4 flex items-center justify-between ${t.border}`}>
         <h1 className="text-2xl font-bold tracking-tight">Budget Planner</h1>
