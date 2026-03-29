@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { calculateTaxBreakdown } from "../utils/taxCalculator"
+import PieChart from "./PieChart"
 
 function IncomeAndTaxes({ data, setData }) {
   const handleChange = (field, value) => {
@@ -195,6 +196,34 @@ function IncomeAndTaxes({ data, setData }) {
               </p>
             </div>
           )}
+
+          {/* ADD PIE CHARTS HERE */}
+          {results.gross > 0 && (
+            <div className="border-t border-gray-800 pt-4 space-y-6">
+              <PieChart
+                title="Pre-Tax Breakdown"
+                size={180}
+                slices={[
+                  { label: "Federal", value: results.federalTax, color: "#ef4444" },
+                  { label: "NY State", value: results.nyStateTax, color: "#f97316" },
+                  { label: "NYC", value: results.nycTax, color: "#eab308" },
+                  { label: "FICA", value: results.socialSecurity + results.medicare, color: "#f43f5e" },
+                  { label: "401k + Benefits", value: results.preTaxDeductions, color: "#8b5cf6" },
+                  { label: "Take-Home", value: results.annualNet, color: "#10b981" },
+                ]}
+              />
+              <PieChart
+                title="Post-Tax (Take-Home Usage)"
+                size={180}
+                slices={[
+                  { label: "Take-Home Pay", value: results.annualNet, color: "#10b981" },
+                  { label: "Total Tax", value: results.totalTax, color: "#ef4444" },
+                  { label: "Pre-Tax Deductions", value: results.preTaxDeductions, color: "#8b5cf6" },
+                ]}
+              />
+            </div>
+          )}
+
         </div>
       </div>
     </div>

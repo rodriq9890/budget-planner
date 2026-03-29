@@ -1,5 +1,6 @@
 import MonthlyExpenses from "./components/MonthlyExpenses"
 import Subscriptions from "./components/Subscriptions"
+import SavingsGoals from "./components/SavingsGoals"
 import { useState } from "react"
 import IncomeAndTaxes from "./components/IncomeAndTaxes"
 
@@ -56,7 +57,7 @@ const resetData = () => {
       case 2:
         return <Subscriptions data={data} setData={updateData} />
       case 3:
-        return <p className="text-gray-500">Savings Goals — coming soon</p>
+        return <SavingsGoals data={data} setData={updateData} />
       case 4:
         return <p className="text-gray-500">Dashboard — coming soon</p>
       default:
