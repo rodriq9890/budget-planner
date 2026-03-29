@@ -151,13 +151,13 @@ function AuthModal({ onClose, t, isDark }) {
         </button>
 
         {mode === "signin" && !resetSent && (
-        <button
-          onClick={handleReset}
-          className={`w-full text-sm ${t.subtle} hover:text-emerald-400 transition-colors`}
-        >
-          Forgot password?
-        </button>
-      )}
+          <button
+            onClick={handleReset}
+            className="w-full text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+          >
+            Forgot password?
+          </button>
+        )}
 
       {resetSent && (
         <p className="text-emerald-400 text-sm text-center">
