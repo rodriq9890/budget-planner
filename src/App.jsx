@@ -1,11 +1,21 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import IncomeAndTaxes from "./components/IncomeAndTaxes"
 import MonthlyExpenses from "./components/MonthlyExpenses"
 import Subscriptions from "./components/Subscriptions"
 import SavingsGoals from "./components/SavingsGoals"
 import Dashboard from "./components/Dashboard"
+import { signInWithGoogle, signOutUser, onAuthChange, saveBudgetData, loadBudgetData } from "./utils/firebase"
 
 const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings Goals", "Dashboard"]
+
+const BLANK_DATA = {
+  grossSalary: 0,
+  retirement401k: 0,
+  hsa: 0,
+  healthInsurance: 0,
+  dental: 0,
+  vision: 0,
+}
 
 function App() {
   const [currentStep, setCurrentStep] = useState(() => {
@@ -15,22 +25,37 @@ function App() {
 
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem("budgetData")
-    return saved
-      ? JSON.parse(saved)
-      : {
-          grossSalary: 0,
-          retirement401k: 0,
-          hsa: 0,
-          healthInsurance: 0,
-          dental: 0,
-          vision: 0,
-        }
+    return saved ? JSON.parse(saved) : BLANK_DATA
   })
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("budgetTheme")
     return saved ? saved === "dark" : true
   })
+
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+
+  // Listen for auth changes
+  useEffect(() => {
+    const unsubscribe = onAuthChange(async (firebaseUser) => {
+      setUser(firebaseUser)
+      if (firebaseUser) {
+        // User signed in — load their data from Firestore
+        setSyncing(true)
+        const cloudData = await loadBudgetData(firebaseUser.uid)
+        if (cloudData) {
+          const { updatedAt, ...budgetData } = cloudData
+          setData(budgetData)
+          localStorage.setItem("budgetData", JSON.stringify(budgetData))
+        }
+        setSyncing(false)
+      }
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
   const toggleTheme = () => {
     const newTheme = !isDark
@@ -46,25 +71,33 @@ function App() {
   const updateData = (newData) => {
     setData(newData)
     localStorage.setItem("budgetData", JSON.stringify(newData))
+    // If signed in, sync to cloud
+    if (user) {
+      saveBudgetData(user.uid, newData)
+    }
   }
 
   const resetData = () => {
-    const blank = {
-      grossSalary: 0,
-      retirement401k: 0,
-      hsa: 0,
-      healthInsurance: 0,
-      dental: 0,
-      vision: 0,
-    }
-    setData(blank)
+    setData(BLANK_DATA)
     localStorage.removeItem("budgetData")
     setCurrentStep(0)
     localStorage.removeItem("budgetStep")
+    if (user) {
+      saveBudgetData(user.uid, BLANK_DATA)
+    }
   }
 
-  // Theme classes we reuse everywhere
-const t = {
+  const handleSignIn = async () => {
+    const result = await signInWithGoogle()
+    // Data loading happens in the onAuthChange listener
+  }
+
+  const handleSignOut = async () => {
+    await signOutUser()
+    setUser(null)
+  }
+
+  const t = {
     bg: isDark ? "bg-gray-950" : "bg-gray-50",
     text: isDark ? "text-gray-100" : "text-gray-900",
     border: isDark ? "border-gray-800" : "border-gray-200",
@@ -95,11 +128,51 @@ const t = {
     }
   }
 
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${t.bg}`}>
+        <p className={t.subtle}>Loading...</p>
+      </div>
+    )
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${t.bg} ${t.text}`}>
       <header className={`border-b px-6 py-4 flex items-center justify-between ${t.border}`}>
         <h1 className="text-2xl font-bold tracking-tight">Budget Planner</h1>
         <div className="flex items-center gap-4">
+          {/* Sync indicator */}
+          {syncing && (
+            <span className={`text-xs ${t.subtle}`}>Syncing...</span>
+          )}
+
+          {/* Auth */}
+          {user ? (
+            <div className="flex items-center gap-3">
+              <img
+                src={user.photoURL}
+                alt=""
+                className="w-7 h-7 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+              <span className={`text-sm hidden sm:inline ${t.muted}`}>{user.displayName?.split(" ")[0]}</span>
+              <button
+                onClick={handleSignOut}
+                className={`text-sm ${t.subtle} hover:text-red-400 transition-colors`}
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleSignIn}
+              className="text-sm px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
+            >
+              Sign In
+            </button>
+          )}
+
+          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
             className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${isDark ? "bg-gray-700" : "bg-emerald-400"}`}
@@ -112,6 +185,7 @@ const t = {
               {isDark ? "🌙" : "☀️"}
             </span>
           </button>
+
           <button
             onClick={resetData}
             className={`text-sm ${t.subtle} hover:text-red-400 transition-colors`}
