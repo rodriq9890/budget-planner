@@ -2,7 +2,7 @@ import { calculateTaxBreakdown } from "../utils/taxCalculator"
 import { exportToPDF, exportToExcel } from "../utils/exportBudget"
 import PieChart from "./PieChart"
 
-function Dashboard({ data, t, isDark }) {
+function Dashboard({ data, setData, t, isDark }) {
   const results = calculateTaxBreakdown(data)
 
   const expenses = data.monthlyExpenses || []
@@ -35,9 +35,12 @@ function Dashboard({ data, t, isDark }) {
     return ((v / results.monthlyNet) * 100).toFixed(1) + "%"
   }
 
-  const idealNeeds = results.monthlyNet * 0.5
-  const idealWants = results.monthlyNet * 0.3
-  const idealSavings = results.monthlyNet * 0.2
+  const needsRatio = (data.budgetNeeds ?? 50) / 100
+  const wantsRatio = (data.budgetWants ?? 30) / 100
+  const savingsRatio = (data.budgetSavings ?? 20) / 100
+  const idealNeeds = results.monthlyNet * needsRatio
+  const idealWants = results.monthlyNet * wantsRatio
+  const idealSavings = results.monthlyNet * savingsRatio
 
   if (!data.grossSalary) {
     return (
@@ -87,15 +90,57 @@ function Dashboard({ data, t, isDark }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className={`border rounded-xl p-6 space-y-5 ${t.card}`}>
-          <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
-            50 / 30 / 20 Rule
-          </h3>
+  <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
+    Budget Rule
+  </h3>
+  <div className="flex gap-3 items-center">
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        value={data.budgetNeeds ?? 50}
+        onChange={(e) => setData({ ...data, budgetNeeds: e.target.value === "" ? "" : Number(e.target.value) })}
+        className={`w-12 text-center rounded px-1 py-0.5 text-sm border ${t.input}`}
+      />
+      <span className={`text-xs ${t.subtle}`}>Needs</span>
+    </div>
+    <span className={t.subtle}>/</span>
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        value={data.budgetWants ?? 30}
+        onChange={(e) => setData({ ...data, budgetWants: e.target.value === "" ? "" : Number(e.target.value) })}
+        className={`w-12 text-center rounded px-1 py-0.5 text-sm border ${t.input}`}
+      />
+      <span className={`text-xs ${t.subtle}`}>Wants</span>
+    </div>
+    <span className={t.subtle}>/</span>
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        value={data.budgetSavings ?? 20}
+        onChange={(e) => setData({ ...data, budgetSavings: e.target.value === "" ? "" : Number(e.target.value) })}
+        className={`w-12 text-center rounded px-1 py-0.5 text-sm border ${t.input}`}
+      />
+      <span className={`text-xs ${t.subtle}`}>Savings</span>
+    </div>
+    {(() => {
+  const total = (data.budgetNeeds ?? 50) + (data.budgetWants ?? 30) + (data.budgetSavings ?? 20)
+  if (total === 100) return <span className="text-emerald-400 text-xs">✓ 100%</span>
+  return (
+    <span className={`text-xs font-medium ${total > 100 ? "text-red-400" : "text-yellow-400"}`}>
+      {total}% — {total > 100 ? `${total - 100}% over` : `${100 - total}% under`}
+    </span>
+  )
+})()}
+  </div>
 
-          {[
-            { label: "Needs (50%)", value: totalNeeds, ideal: idealNeeds, color: "bg-blue-500" },
-            { label: "Wants (30%)", value: totalWants, ideal: idealWants, color: totalWants > idealWants ? "bg-red-500" : "bg-purple-500" },
-            { label: "Savings (20%)", value: totalSavings, ideal: idealSavings, color: "bg-emerald-500" },
-          ].map(({ label, value, ideal, color }) => (
+  {(data.budgetNeeds ?? 50) + (data.budgetWants ?? 30) + (data.budgetSavings ?? 20) === 100 && (
+    <>
+      {[
+    { label: `Needs (${data.budgetNeeds ?? 50}%)`, value: totalNeeds, ideal: idealNeeds, color: "bg-blue-500" },
+    { label: `Wants (${data.budgetWants ?? 30}%)`, value: totalWants + remaining, ideal: idealWants, color: totalWants > idealWants ? "bg-red-500" : "bg-purple-500" },
+    { label: `Savings (${data.budgetSavings ?? 20}%)`, value: totalSavings, ideal: idealSavings, color: "bg-emerald-500" },
+  ].map(({ label, value, ideal, color }) => (
             <div key={label} className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className={t.muted}>{label}</span>
@@ -113,7 +158,9 @@ function Dashboard({ data, t, isDark }) {
                   : `${fmt(value - ideal)} over budget`}
               </p>
             </div>
-          ))}
+            ))} 
+          </> 
+          )}
         </div>
 
         <div className={`border rounded-xl p-6 space-y-4 ${t.card}`}>
