@@ -20,7 +20,7 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
     const newId = Math.max(...expenses.map((e) => e.id), 0) + 1
     setData({
       ...data,
-      monthlyExpenses: [...expenses, { id: newId, name: "", amount: 0 }],
+      monthlyExpenses: [...expenses, { id: newId, name: "", amount: 0, essential: true }],
     })
   }
 
@@ -32,6 +32,10 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
   }
 
   const total = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
+  
+  const essentialTotal = expenses
+    .filter((e) => e.essential !== false)
+    .reduce((sum, e) => sum + (e.amount || 0), 0)
 
   const formatMoney = (amount) => {
     return new Intl.NumberFormat("en-US", {
@@ -57,6 +61,13 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
           <div className="space-y-3">
             {expenses.map((expense) => (
               <div key={expense.id} className="flex gap-3 items-center">
+                <button
+                  onClick={() => updateExpense(expense.id, "essential", !expense.essential)}
+                  title={expense.essential !== false ? "Essential — counted in emergency fund" : "Non-essential — excluded from emergency fund"}
+                  className={`text-lg shrink-0 ${expense.essential !== false ? "" : "opacity-30"}`}
+                >
+                  {expense.essential !== false ? "🛡️" : "✦"}
+                </button>
                 <input
                   type="text"
                   value={expense.name}
@@ -102,7 +113,18 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
 
             <div>
               <p className="text-3xl font-bold">{formatMoney(total)}</p>
-              <p className={`text-sm ${t.subtle}`}>per month</p>
+              <p className={`text-sm ${t.subtle}`}>per month (total)</p>
+            </div>
+
+            <div className="flex justify-between text-sm">
+              <div>
+                <p className="font-semibold">{formatMoney(essentialTotal)}</p>
+                <p className={`text-xs ${t.subtle}`}>🛡️ essential</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold">{formatMoney(total - essentialTotal)}</p>
+                <p className={`text-xs ${t.subtle}`}>✦ non-essential</p>
+              </div>
             </div>
 
             <div>

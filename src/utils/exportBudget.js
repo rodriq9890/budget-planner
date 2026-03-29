@@ -18,7 +18,7 @@ function getBudgetData(data) {
   const annualSubs = data.annualSubs || []
   const extraGoals = data.extraGoals || []
 
-  const monthlyEssentials = expenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  const monthlyEssentials = expenses.filter((e) => e.essential !== false).reduce((sum, e) => sum + (e.amount || 0), 0)
   const monthlySubsTotal = monthlySubs.reduce((sum, s) => sum + (s.amount || 0), 0)
   const annualSubsMonthly = annualSubs.reduce((sum, s) => sum + (s.amount || 0), 0) / 12
   const emergencyDeposit = data.monthlyEmergencyDeposit || 0

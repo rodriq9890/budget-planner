@@ -48,7 +48,7 @@ function PieChart({ slices, title, size = 200, formatMoney, isDark = true }) {
       {title && (
         <h4 className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-gray-500" : "text-gray-400"}`}>{title}</h4>
       )}
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
         <div className="relative shrink-0">
           <svg width={size} height={size}>
             {paths.map((p) => (

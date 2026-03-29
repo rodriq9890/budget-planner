@@ -10,7 +10,7 @@ function Dashboard({ data, setData, t, isDark }) {
   const annualSubs = data.annualSubs || []
   const extraGoals = data.extraGoals || []
 
-  const monthlyEssentials = expenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  const monthlyEssentials = expenses.filter((e) => e.essential !== false).reduce((sum, e) => sum + (e.amount || 0), 0)  
   const monthlySubsTotal = monthlySubs.reduce((sum, s) => sum + (s.amount || 0), 0)
   const annualSubsMonthly = annualSubs.reduce((sum, s) => sum + (s.amount || 0), 0) / 12
   const emergencyDeposit = data.monthlyEmergencyDeposit || 0
@@ -52,7 +52,7 @@ function Dashboard({ data, setData, t, isDark }) {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <h2 className={`text-xl font-semibold mb-1 ${t.heading}`}>Dashboard</h2>
           <p className={`${t.subtle} text-sm`}>Your complete financial picture at a glance.</p>
@@ -60,15 +60,15 @@ function Dashboard({ data, setData, t, isDark }) {
         <div className="flex gap-2">
           <button
             onClick={() => exportToPDF(data)}
-            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors"
           >
-            Export PDF
+            PDF
           </button>
           <button
             onClick={() => exportToExcel(data)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors"
           >
-            Export Excel
+            Excel
           </button>
         </div>
       </div>
@@ -93,7 +93,7 @@ function Dashboard({ data, setData, t, isDark }) {
   <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
     Budget Rule
   </h3>
-  <div className="flex gap-3 items-center">
+  <div className="flex flex-wrap gap-3 items-center">
     <div className="flex items-center gap-1">
       <input
         type="number"

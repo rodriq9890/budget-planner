@@ -171,30 +171,26 @@ function App() {
     )
   }
   return (
-      
-    
     <div className={`min-h-screen transition-colors duration-300 ${t.bg} ${t.text}`}>
-      <header className={`border-b px-6 py-4 flex items-center justify-between ${t.border}`}>
-        <h1 className="text-2xl font-bold tracking-tight">Budget Planner</h1>
-        <div className="flex items-center gap-4">
-          {/* Sync indicator */}
+      <header className={`border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between ${t.border}`}>
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Budget Planner</h1>
+        <div className="flex items-center gap-2 sm:gap-4">
           {syncing && (
             <span className={`text-xs ${t.subtle}`}>Syncing...</span>
           )}
 
-          {/* Auth */}
           {user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <img
                 src={user.photoURL}
                 alt=""
-                className="w-7 h-7 rounded-full"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full"
                 referrerPolicy="no-referrer"
               />
               <span className={`text-sm hidden sm:inline ${t.muted}`}>{user.displayName?.split(" ")[0]}</span>
               <button
                 onClick={handleSignOut}
-                className={`text-sm ${t.subtle} hover:text-red-400 transition-colors`}
+                className={`text-xs sm:text-sm ${t.subtle} hover:text-red-400 transition-colors`}
               >
                 Sign Out
               </button>
@@ -202,20 +198,19 @@ function App() {
           ) : (
             <button
               onClick={() => setShowAuth(true)}
-              className="text-sm px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
+              className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
             >
               Sign In
             </button>
           )}
 
-          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${isDark ? "bg-gray-700" : "bg-emerald-400"}`}
+            className={`relative w-11 sm:w-14 h-6 sm:h-7 rounded-full transition-colors duration-300 ${isDark ? "bg-gray-700" : "bg-emerald-400"}`}
           >
             <span
-              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full transition-all duration-300 flex items-center justify-center text-xs ${
-                isDark ? "translate-x-0 bg-gray-900" : "translate-x-7 bg-white"
+              className={`absolute top-0.5 left-0.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-all duration-300 flex items-center justify-center text-[10px] sm:text-xs ${
+                isDark ? "translate-x-0 bg-gray-900" : "translate-x-5 sm:translate-x-7 bg-white"
               }`}
             >
               {isDark ? "🌙" : "☀️"}
@@ -224,11 +219,10 @@ function App() {
 
           <button
             onClick={resetData}
-            className={`text-sm ${t.subtle} hover:text-red-400 transition-colors`}
+            className={`text-xs sm:text-sm ${t.subtle} hover:text-red-400 transition-colors hidden sm:block`}
           >
             Reset All
           </button>
-          
         </div>
       </header>
 

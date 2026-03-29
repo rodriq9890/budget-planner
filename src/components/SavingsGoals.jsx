@@ -24,7 +24,7 @@ function SavingsGoals({ data, setData, t, isDark }) {
   }
 
   const expenses = data.monthlyExpenses || []
-  const monthlyEssentials = expenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  const monthlyEssentials = expenses.filter((e) => e.essential !== false).reduce((sum, e) => sum + (e.amount || 0), 0)
   const monthsCoverage = data.emergencyMonths || 0
   const emergencyTarget = monthlyEssentials * monthsCoverage
   const currentSavings = data.currentSavings || 0
@@ -91,13 +91,13 @@ function SavingsGoals({ data, setData, t, isDark }) {
                   className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
                 />
               </label>
-
               {monthlyEssentials > 0 && (
                 <div className={`border rounded-lg p-3 text-sm ${t.card}`}>
-                  <span className={t.muted}>Your monthly essentials: </span>
+                  <span className={t.muted}>Essential expenses: </span>
                   <span className="font-medium">{formatMoney(monthlyEssentials)}</span>
                   <span className={t.muted}> × {monthsCoverage} months = </span>
                   <span className="text-emerald-400 font-medium">{formatMoney(emergencyTarget)} target</span>
+                  <p className={`text-xs mt-1 ${t.subtle}`}>🛡️ Only essential items from Monthly Expenses are included</p>
                 </div>
               )}
 
