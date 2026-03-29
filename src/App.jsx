@@ -243,7 +243,7 @@ const renderStep = () => {
             }`}
           >
             <span className="hidden sm:inline">{step}</span>
-            <span className="sm:hidden">{["Income", "Expenses", "Subs", "Savings", "Summary"][index]}</span>
+            <span className="sm:hidden">{["Income", "Expenses", "Subs", "Savings", "Pay", "Summary"][index]}</span>
           </button>
         ))}
       </nav>
