@@ -81,23 +81,24 @@ const resetData = () => {
         </header>        
       </header>
 
-      <nav className="px-6 py-4 flex gap-2 border-b border-gray-800">
+      <nav className="px-4 py-3 flex gap-1.5 border-b border-gray-800 overflow-x-auto">
         {STEPS.map((step, index) => (
           <button
             key={step}
             onClick={() => changeStep(index)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
               index === currentStep
-                ? "bg-emerald-600 text-white"
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
                 : "text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            {step}
+            <span className="hidden sm:inline">{step}</span>
+            <span className="sm:hidden">{["Income", "Expenses", "Subs", "Savings", "Summary"][index]}</span>
           </button>
         ))}
       </nav>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {renderStep()}
       </main>
     </div>
