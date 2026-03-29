@@ -1,4 +1,5 @@
 import { calculateTaxBreakdown } from "../utils/taxCalculator"
+import { exportToPDF, exportToExcel } from "../utils/exportBudget"
 import PieChart from "./PieChart"
 
 function Dashboard({ data }) {
@@ -49,9 +50,25 @@ function Dashboard({ data }) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold text-white mb-1">Dashboard</h2>
-        <p className="text-gray-500 text-sm">Your complete financial picture at a glance.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-white mb-1">Dashboard</h2>
+          <p className="text-gray-500 text-sm">Your complete financial picture at a glance.</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => exportToPDF(data)}
+            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Export PDF
+          </button>
+          <button
+            onClick={() => exportToExcel(data)}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Export Excel
+          </button>
+        </div>
       </div>
 
       {/* Top cards */}
