@@ -5,10 +5,11 @@ import MonthlyExpenses from "./components/MonthlyExpenses"
 import Subscriptions from "./components/Subscriptions"
 import SavingsGoals from "./components/SavingsGoals"
 import Dashboard from "./components/Dashboard"
+import PaycheckCalendar from "./components/PaycheckCalendar"
 import LandingPage from "./components/LandingPage"
 import { signInWithGoogle, signOutUser, onAuthChange, saveBudgetData, loadBudgetData } from "./utils/firebase"
 
-const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings Goals", "Dashboard"]
+const STEPS = ["Income & Taxes", "Monthly Expenses", "Subscriptions", "Savings Goals", "Paychecks", "Dashboard"]
 
 const BLANK_DATA = {
   grossSalary: 0,
@@ -121,22 +122,24 @@ function App() {
     heading: isDark ? "text-white" : "text-gray-900",
   }
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 0:
-        return <IncomeAndTaxes data={data} setData={updateData} t={t} isDark={isDark} />
-      case 1:
-        return <MonthlyExpenses data={data} setData={updateData} t={t} isDark={isDark} />
-      case 2:
-        return <Subscriptions data={data} setData={updateData} t={t} isDark={isDark} />
-      case 3:
-        return <SavingsGoals data={data} setData={updateData} t={t} isDark={isDark} />
-      case 4:
-        return <Dashboard data={data} setData={updateData} t={t} isDark={isDark} />
-      default:
-        return null
-    }
+const renderStep = () => {
+  switch (currentStep) {
+    case 0:
+      return <IncomeAndTaxes data={data} setData={updateData} t={t} isDark={isDark} />
+    case 1:
+      return <MonthlyExpenses data={data} setData={updateData} t={t} isDark={isDark} />
+    case 2:
+      return <Subscriptions data={data} setData={updateData} t={t} isDark={isDark} />
+    case 3:
+      return <SavingsGoals data={data} setData={updateData} t={t} isDark={isDark} />
+    case 4:
+      return <PaycheckCalendar data={data} setData={updateData} t={t} isDark={isDark} />
+    case 5:
+      return <Dashboard data={data} setData={updateData} t={t} isDark={isDark} />
+    default:
+      return null
   }
+}
 
   if (loading) {
     return (
