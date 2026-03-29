@@ -1,5 +1,14 @@
 import { initializeApp } from "firebase/app"
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth"
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth"
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore"
 
 const firebaseConfig = {
@@ -20,10 +29,39 @@ const provider = new GoogleAuthProvider()
 export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, provider)
-    return result.user
+    return { user: result.user, error: null }
   } catch (error) {
-    console.error("Sign in error:", error)
-    return null
+    return { user: null, error: error.message }
+  }
+}
+
+export async function signUpWithEmail(email, password, name) {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password)
+    if (name) {
+      await updateProfile(result.user, { displayName: name })
+    }
+    return { user: result.user, error: null }
+  } catch (error) {
+    let message = "Something went wrong"
+    if (error.code === "auth/email-already-in-use") message = "An account with this email already exists"
+    if (error.code === "auth/weak-password") message = "Password must be at least 6 characters"
+    if (error.code === "auth/invalid-email") message = "Invalid email address"
+    return { user: null, error: message }
+  }
+}
+
+export async function signInWithEmail(email, password) {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password)
+    return { user: result.user, error: null }
+  } catch (error) {
+    let message = "Something went wrong"
+    if (error.code === "auth/invalid-credential") message = "Invalid email or password"
+    if (error.code === "auth/user-not-found") message = "No account found with this email"
+    if (error.code === "auth/wrong-password") message = "Incorrect password"
+    if (error.code === "auth/too-many-requests") message = "Too many attempts. Try again later"
+    return { user: null, error: message }
   }
 }
 
@@ -39,7 +77,6 @@ export function onAuthChange(callback) {
   return onAuthStateChanged(auth, callback)
 }
 
-// Save budget data to Firestore
 export async function saveBudgetData(userId, data) {
   try {
     await setDoc(doc(db, "budgets", userId), {
@@ -51,7 +88,6 @@ export async function saveBudgetData(userId, data) {
   }
 }
 
-// Load budget data from Firestore
 export async function loadBudgetData(userId) {
   try {
     const snapshot = await getDoc(doc(db, "budgets", userId))

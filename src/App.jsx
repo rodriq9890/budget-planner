@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import AuthModal from "./components/AuthModal"
 import IncomeAndTaxes from "./components/IncomeAndTaxes"
 import MonthlyExpenses from "./components/MonthlyExpenses"
 import Subscriptions from "./components/Subscriptions"
@@ -22,6 +23,8 @@ function App() {
     const saved = localStorage.getItem("budgetStep")
     return saved ? Number(saved) : 0
   })
+
+  const [showAuth, setShowAuth] = useState(false)
 
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem("budgetData")
@@ -165,7 +168,7 @@ function App() {
             </div>
           ) : (
             <button
-              onClick={handleSignIn}
+              onClick={() => setShowAuth(true)}
               className="text-sm px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
             >
               Sign In
@@ -192,6 +195,7 @@ function App() {
           >
             Reset All
           </button>
+          
         </div>
       </header>
 
@@ -217,6 +221,9 @@ function App() {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {renderStep()}
       </main>
+            {showAuth && (
+        <AuthModal onClose={() => setShowAuth(false)} t={t} isDark={isDark} />
+      )}
     </div>
   )
 }
