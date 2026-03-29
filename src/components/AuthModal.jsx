@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from "../utils/firebase"
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } from "../utils/firebase"
 
 function AuthModal({ onClose, t, isDark }) {
   const [mode, setMode] = useState("signin")
@@ -8,6 +8,7 @@ function AuthModal({ onClose, t, isDark }) {
   const [name, setName] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   const handleSubmit = async () => {
     setError("")
@@ -42,6 +43,22 @@ function AuthModal({ onClose, t, isDark }) {
       setError(result.error)
     } else {
       onClose()
+    }
+  }
+
+  const handleReset = async () => {
+    if (!email) {
+      setError("Enter your email address first")
+      return
+    }
+    setError("")
+    setLoading(true)
+    const result = await resetPassword(email)
+    setLoading(false)
+    if (result.error) {
+      setError(result.error)
+    } else {
+      setResetSent(true)
     }
   }
 
@@ -132,6 +149,21 @@ function AuthModal({ onClose, t, isDark }) {
         >
           {loading ? "..." : mode === "signin" ? "Sign In" : "Create Account"}
         </button>
+
+        {mode === "signin" && !resetSent && (
+        <button
+          onClick={handleReset}
+          className={`w-full text-sm ${t.subtle} hover:text-emerald-400 transition-colors`}
+        >
+          Forgot password?
+        </button>
+      )}
+
+      {resetSent && (
+        <p className="text-emerald-400 text-sm text-center">
+          Password reset email sent! Check your inbox.
+        </p>
+      )}
 
         <p className={`text-center text-sm ${t.subtle}`}>
           {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
