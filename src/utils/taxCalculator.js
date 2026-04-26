@@ -52,12 +52,12 @@ export function calculateTaxBreakdown(data) {
   const cityName = data.cityName || null
 
   // Pre-tax deductions reduce taxable income
-  const preTaxDeductions =
-    (gross * (data.retirement401k || 0)) / 100 +
-    (data.hsa || 0) * 12 +
-    (data.healthInsurance || 0) * 12 +
-    (data.dental || 0) * 12 +
-    (data.vision || 0) * 12
+  const deduction401k = (gross * (data.retirement401k || 0)) / 100
+  const deductionHSA = (data.hsa || 0) * 12
+  const deductionHealth = (data.healthInsurance || 0) * 12
+  const deductionDental = (data.dental || 0) * 12
+  const deductionVision = (data.vision || 0) * 12
+  const preTaxDeductions = deduction401k + deductionHSA + deductionHealth + deductionDental + deductionVision
 
   const taxableIncome = Math.max(0, gross - preTaxDeductions)
 
@@ -89,6 +89,11 @@ export function calculateTaxBreakdown(data) {
     gross,
     taxableIncome,
     preTaxDeductions,
+    deduction401k,
+    deductionHSA,
+    deductionHealth,
+    deductionDental,
+    deductionVision,
     federalTax,
     stateTax,
     cityTax,

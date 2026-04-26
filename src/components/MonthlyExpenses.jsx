@@ -31,10 +31,35 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
     })
   }
 
+  // Cycle: true (fixed) → "variable" → false (non-essential) → true
+  const cycleEssential = (current) => {
+    if (current === "variable") return false
+    if (current === false) return true
+    return "variable"
+  }
+
+  const essentialIcon = (essential) =>
+    essential === false ? "✦" : essential === "variable" ? "🧾" : "🛡️"
+
+  const essentialTitle = (essential) =>
+    essential === false
+      ? "Non-essential — excluded from emergency fund"
+      : essential === "variable"
+      ? "Variable essential — included in emergency fund, shown as Variable Budget in income bar"
+      : "Fixed essential — included in emergency fund, counted as Fixed Expenses in income bar"
+
+  const essentialOpacity = (essential) =>
+    essential === false ? "opacity-30" : ""
+
   const total = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
-  
-  const essentialTotal = expenses
-    .filter((e) => e.essential !== false)
+  const fixedTotal = expenses
+    .filter((e) => e.essential === true || (e.essential !== false && e.essential !== "variable"))
+    .reduce((sum, e) => sum + (e.amount || 0), 0)
+  const variableTotal = expenses
+    .filter((e) => e.essential === "variable")
+    .reduce((sum, e) => sum + (e.amount || 0), 0)
+  const nonEssentialTotal = expenses
+    .filter((e) => e.essential === false)
     .reduce((sum, e) => sum + (e.amount || 0), 0)
 
   const formatMoney = (amount) => {
@@ -56,17 +81,23 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
             <p className={`${t.subtle} text-sm`}>
               Fixed costs you pay every month. These are your "needs."
             </p>
+            <div className={`mt-3 flex flex-col gap-1 text-xs ${t.muted}`}>
+              <span>🛡️ <strong>Fixed essential</strong> — counted in emergency fund · shown as Fixed Expenses</span>
+              <span>🧾 <strong>Variable essential</strong> — counted in emergency fund · shown as Variable Budget (food, gas, etc.)</span>
+              <span className="opacity-50">✦ <strong>Non-essential</strong> — excluded from emergency fund · shown as Expenses</span>
+              <span className={`${t.subtle} mt-0.5`}>Click the icon on each row to cycle through types.</span>
+            </div>
           </div>
 
           <div className="space-y-3">
             {expenses.map((expense) => (
               <div key={expense.id} className="flex gap-3 items-center">
                 <button
-                  onClick={() => updateExpense(expense.id, "essential", !expense.essential)}
-                  title={expense.essential !== false ? "Essential — counted in emergency fund" : "Non-essential — excluded from emergency fund"}
-                  className={`text-lg shrink-0 ${expense.essential !== false ? "" : "opacity-30"}`}
+                  onClick={() => updateExpense(expense.id, "essential", cycleEssential(expense.essential))}
+                  title={essentialTitle(expense.essential)}
+                  className={`text-lg shrink-0 transition-opacity ${essentialOpacity(expense.essential)}`}
                 >
-                  {expense.essential !== false ? "🛡️" : "✦"}
+                  {essentialIcon(expense.essential)}
                 </button>
                 <input
                   type="text"
@@ -108,7 +139,7 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
         <div className="lg:col-span-2">
           <div className={`border rounded-xl p-6 sticky top-8 space-y-6 ${t.card}`}>
             <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
-              Essentials Summary
+              Expenses Summary
             </h3>
 
             <div>
@@ -116,15 +147,25 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
               <p className={`text-sm ${t.subtle}`}>per month (total)</p>
             </div>
 
-            <div className="flex justify-between text-sm">
-              <div>
-                <p className="font-semibold">{formatMoney(essentialTotal)}</p>
-                <p className={`text-xs ${t.subtle}`}>🛡️ essential</p>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold">{formatMoney(total - essentialTotal)}</p>
-                <p className={`text-xs ${t.subtle}`}>✦ non-essential</p>
-              </div>
+            <div className="space-y-2 text-sm">
+              {fixedTotal > 0 && (
+                <div className="flex justify-between">
+                  <span className={t.muted}>🛡️ Fixed essential</span>
+                  <span className="font-medium">{formatMoney(fixedTotal)}</span>
+                </div>
+              )}
+              {variableTotal > 0 && (
+                <div className="flex justify-between">
+                  <span className={t.muted}>🧾 Variable essential</span>
+                  <span className="font-medium">{formatMoney(variableTotal)}</span>
+                </div>
+              )}
+              {nonEssentialTotal > 0 && (
+                <div className="flex justify-between">
+                  <span className={`opacity-60 ${t.muted}`}>✦ Non-essential</span>
+                  <span className="font-medium opacity-60">{formatMoney(nonEssentialTotal)}</span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -138,7 +179,9 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
                 .sort((a, b) => b.amount - a.amount)
                 .map((expense) => (
                   <div key={expense.id} className="flex justify-between text-sm">
-                    <span className={t.muted}>{expense.name || "Unnamed"}</span>
+                    <span className={t.muted}>
+                      {essentialIcon(expense.essential)} {expense.name || "Unnamed"}
+                    </span>
                     <span>{formatMoney(expense.amount)}</span>
                   </div>
                 ))}

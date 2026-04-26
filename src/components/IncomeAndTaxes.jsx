@@ -1,12 +1,15 @@
+import { useState } from "react"
 import { calculateTaxBreakdown } from "../utils/taxCalculator"
 import { getAllStates, getCitiesForState, getStateFromZip } from "../utils/stateTaxData"
 import PieChart from "./PieChart"
 
+
+
 function IncomeAndTaxes({ data, setData, t, isDark }) {
+  const [viewMode, setViewMode] = useState("monthly")
   const handleChange = (field, value) => {
     setData({ ...data, [field]: value })
-  }
-
+  }  
   const handleZipChange = (zip) => {
     const updates = { ...data, zipCode: zip }
     if (zip.length >= 5) {
@@ -241,69 +244,108 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
       {/* Right side — Live Results */}
       <div className="lg:col-span-2">
         <div className={`border rounded-xl p-6 sticky top-8 space-y-6 ${t.card}`}>
-          <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Take-Home Pay</h3>
-
-          <div>
-            <p className="text-3xl font-bold">{formatMoney(results.monthlyNet)}</p>
-            <p className={`text-sm ${t.subtle}`}>per month</p>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Take-Home Pay</h3>
+            <div className="flex gap-1">
+              {["monthly", "annual"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                    viewMode === mode
+                      ? "bg-emerald-600 text-white"
+                      : isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-900"
+                  }`}
+                >
+                  {mode === "monthly" ? "Monthly" : "Annual"}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-lg font-semibold">{formatMoney(results.biweeklyNet)}</p>
-              <p className={`text-xs ${t.subtle}`}>per paycheck ({data.payFrequency || "biweekly"})</p>
-            </div>
-            <div>
-              <p className="text-lg font-semibold">{formatMoney(results.annualNet)}</p>
-              <p className={`text-xs ${t.subtle}`}>per year</p>
-            </div>
-          </div>
+          {viewMode === "monthly" ? (
+            <>
+              <div>
+                <p className="text-3xl font-bold">{formatMoney(results.monthlyNet)}</p>
+                <p className={`text-sm ${t.subtle}`}>per month</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-lg font-semibold">{formatMoney(results.biweeklyNet)}</p>
+                  <p className={`text-xs ${t.subtle}`}>per paycheck ({data.payFrequency || "biweekly"})</p>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold">{results.paychecksPerYear / 12 % 1 === 0 ? results.paychecksPerYear / 12 : (results.paychecksPerYear / 12).toFixed(1)}</p>
+                  <p className={`text-xs ${t.subtle}`}>paychecks/month</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-3xl font-bold">{formatMoney(results.annualNet)}</p>
+                <p className={`text-sm ${t.subtle}`}>per year</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-lg font-semibold">{formatMoney(results.biweeklyNet)}</p>
+                  <p className={`text-xs ${t.subtle}`}>per paycheck</p>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold">{results.paychecksPerYear}</p>
+                  <p className={`text-xs ${t.subtle}`}>paychecks/year</p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className={`border-t pt-4 space-y-3 ${t.border}`}>
-            <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Tax Breakdown (Annual)</h4>
+            <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>
+              Tax Breakdown ({viewMode === "monthly" ? "Monthly" : "Annual"})
+            </h4>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className={t.muted}>Federal</span>
-                <span>{formatMoney(results.federalTax)}</span>
-              </div>
-              {results.hasStateTax && (
-                <div className="flex justify-between">
-                  <span className={t.muted}>
-                    {allStates.find((s) => s.code === data.stateCode)?.name || "State"}
-                  </span>
-                  <span>{formatMoney(results.stateTax)}</span>
+              {[
+                { label: "Federal", value: results.federalTax },
+                ...(results.hasStateTax ? [{ label: allStates.find((s) => s.code === data.stateCode)?.name || "State", value: results.stateTax }] : []),
+                ...(results.cityTax > 0 ? [{ label: data.cityName, value: results.cityTax }] : []),
+                { label: "Social Security", value: results.socialSecurity },
+                { label: "Medicare", value: results.medicare },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between">
+                  <span className={t.muted}>{label}</span>
+                  <span>{formatMoney(viewMode === "monthly" ? value / 12 : value)}</span>
                 </div>
-              )}
-              {results.cityTax > 0 && (
-                <div className="flex justify-between">
-                  <span className={t.muted}>{data.cityName}</span>
-                  <span>{formatMoney(results.cityTax)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className={t.muted}>Social Security</span>
-                <span>{formatMoney(results.socialSecurity)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={t.muted}>Medicare</span>
-                <span>{formatMoney(results.medicare)}</span>
-              </div>
+              ))}
               <div className={`flex justify-between border-t pt-2 font-medium ${t.border}`}>
                 <span>Total Tax</span>
-                <span className="text-red-400">{formatMoney(results.totalTax)}</span>
+                <span className="text-red-400">{formatMoney(viewMode === "monthly" ? results.totalTax / 12 : results.totalTax)}</span>
               </div>
             </div>
           </div>
 
           <div className={`border-t pt-4 space-y-2 text-sm ${t.border}`}>
-            <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Pre-Tax Deductions (Annual)</h4>
-            <div className="flex justify-between">
-              <span className={t.muted}>401k + Benefits</span>
-              <span>{formatMoney(results.preTaxDeductions)}</span>
+            <h4 className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>
+              Pre-Tax Deductions ({viewMode === "monthly" ? "Monthly" : "Annual"})
+            </h4>
+            <div className="space-y-2">
+              {[
+                { label: "401(k)", value: results.deduction401k },
+                { label: "HSA", value: results.deductionHSA },
+                { label: "Health Insurance", value: results.deductionHealth },
+                { label: "Dental", value: results.deductionDental },
+                { label: "Vision", value: results.deductionVision },
+              ]
+                .filter(({ value }) => value > 0)
+                .map(({ label, value }) => (
+                  <div key={label} className="flex justify-between">
+                    <span className={t.muted}>{label}</span>
+                    <span>{formatMoney(viewMode === "monthly" ? value / 12 : value)}</span>
+                  </div>
+                ))}
             </div>
             <div className={`flex justify-between border-t pt-2 font-medium ${t.border}`}>
               <span>Total Deductions</span>
-              <span className="text-red-400">{formatMoney(results.totalDeductions)}</span>
+              <span className="text-red-400">{formatMoney(viewMode === "monthly" ? results.totalDeductions / 12 : results.totalDeductions)}</span>
             </div>
           </div>
 

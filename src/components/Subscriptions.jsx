@@ -13,15 +13,18 @@ function Subscriptions({ data, setData, t, isDark }) {
 
   const addItem = (key, list) => {
     const newId = Math.max(...list.map((i) => i.id), 0) + 1
-    setData({ ...data, [key]: [...list, { id: newId, name: "", amount: 0 }] })
+    setData({ ...data, [key]: [...list, { id: newId, name: "", amount: 0, hasDiscount: false, discount: 0 }] })
   }
 
   const removeItem = (key, list, id) => {
     setData({ ...data, [key]: list.filter((item) => item.id !== id) })
   }
 
-  const monthlyTotal = monthlySubs.reduce((sum, s) => sum + (s.amount || 0), 0)
-  const annualTotal = annualSubs.reduce((sum, s) => sum + (s.amount || 0), 0)
+  const effectiveAmount = (item) =>
+    Math.max(0, (item.amount || 0) - (item.hasDiscount ? (item.discount || 0) : 0))
+
+  const monthlyTotal = monthlySubs.reduce((sum, s) => sum + effectiveAmount(s), 0)
+  const annualTotal = annualSubs.reduce((sum, s) => sum + effectiveAmount(s), 0)
   const annualAsMonthly = annualTotal / 12
   const grandTotal = monthlyTotal + annualAsMonthly
 
@@ -33,38 +36,81 @@ function Subscriptions({ data, setData, t, isDark }) {
       maximumFractionDigits: 2,
     }).format(amount)
 
-  const renderList = (key, list, label, amountLabel) => (
+  const renderList = (key, list, label, amountLabel, allowDiscount = false) => (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">{label}</h3>
       <div className="space-y-3">
         {list.map((item) => (
-          <div key={item.id} className="flex gap-3 items-center">
-            <input
-              type="text"
-              value={item.name}
-              onChange={(e) => updateList(key, list, item.id, "name", e.target.value)}
-              placeholder="Name"
-              className={`flex-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
-            />
-            <div className="relative w-36">
-              <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+          <div key={item.id} className="space-y-1.5">
+            <div className="flex gap-3 items-center">
               <input
-                type="number"
-                value={item.amount || ""}
-                onChange={(e) =>
-                  updateList(key, list, item.id, "amount", Number(e.target.value))
-                }
-                placeholder="0"
-                className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                type="text"
+                value={item.name}
+                onChange={(e) => updateList(key, list, item.id, "name", e.target.value)}
+                placeholder="Name"
+                className={`flex-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
               />
+              <div className="relative w-32">
+                <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                <input
+                  type="number"
+                  value={item.amount || ""}
+                  onChange={(e) =>
+                    updateList(key, list, item.id, "amount", Number(e.target.value))
+                  }
+                  placeholder="0"
+                  className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                />
+              </div>
+              <span className={`text-xs w-8 ${t.subtle}`}>{amountLabel}</span>
+              {allowDiscount && (
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={item.hasDiscount || false}
+                    onChange={(e) => {
+                      const updated = list.map((i) =>
+                        i.id === item.id
+                          ? { ...i, hasDiscount: e.target.checked, discount: e.target.checked ? i.discount : 0 }
+                          : i
+                      )
+                      setData({ ...data, [key]: updated })
+                    }}
+                    className="accent-emerald-500 w-3.5 h-3.5"
+                  />
+                  <span className={`text-xs ${item.hasDiscount ? "text-emerald-400" : t.subtle}`}>Disc.</span>
+                </label>
+              )}
+              <button
+                onClick={() => removeItem(key, list, item.id)}
+                className={`${t.subtle} hover:text-red-400 transition-colors p-1`}
+              >
+                ✕
+              </button>
             </div>
-            <span className={`text-xs w-8 ${t.subtle}`}>{amountLabel}</span>
-            <button
-              onClick={() => removeItem(key, list, item.id)}
-              className={`${t.subtle} hover:text-red-400 transition-colors p-1`}
-            >
-              ✕
-            </button>
+
+            {allowDiscount && item.hasDiscount && (
+              <div className="flex items-center gap-3 pl-4">
+                <span className={`text-xs ${t.muted}`}>Discount</span>
+                <div className="relative w-32">
+                  <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                  <input
+                    type="number"
+                    value={item.discount || ""}
+                    onChange={(e) =>
+                      updateList(key, list, item.id, "discount", Number(e.target.value))
+                    }
+                    placeholder="0"
+                    className={`w-full rounded-lg pl-8 pr-4 py-2 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm ${t.input}`}
+                  />
+                </div>
+                {item.discount > 0 && (
+                  <span className="text-xs text-emerald-400">
+                    → {formatMoney(effectiveAmount(item))}{amountLabel} effective
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -89,7 +135,7 @@ function Subscriptions({ data, setData, t, isDark }) {
             </p>
           </div>
 
-          {renderList("monthlySubs", monthlySubs, "Monthly Subscriptions", "/mo")}
+          {renderList("monthlySubs", monthlySubs, "Monthly Subscriptions", "/mo", true)}
           {renderList("annualSubs", annualSubs, "Annual Subscriptions & Card Fees", "/yr")}
         </div>
 
@@ -101,7 +147,7 @@ function Subscriptions({ data, setData, t, isDark }) {
 
             <div>
               <p className="text-3xl font-bold">{formatMoney(grandTotal)}</p>
-              <p className={`text-sm ${t.subtle}`}>per month (total)</p>
+              <p className={`text-sm ${t.subtle}`}>per month (after discounts)</p>
             </div>
 
             <div>
@@ -117,7 +163,17 @@ function Subscriptions({ data, setData, t, isDark }) {
                   .map((s) => (
                     <div key={s.id} className="flex justify-between text-sm">
                       <span className={t.muted}>{s.name || "Unnamed"}</span>
-                      <span>{formatMoney(s.amount)}/mo</span>
+                      <span className="text-right">
+                        {s.hasDiscount && s.discount > 0 ? (
+                          <>
+                            <span className={`line-through mr-1 ${t.subtle}`}>{formatMoney(s.amount)}</span>
+                            <span className="text-emerald-400">{formatMoney(effectiveAmount(s))}</span>
+                          </>
+                        ) : (
+                          formatMoney(s.amount)
+                        )}
+                        <span className={t.subtle}>/mo</span>
+                      </span>
                     </div>
                   ))}
                 {monthlyTotal > 0 && (
@@ -135,9 +191,17 @@ function Subscriptions({ data, setData, t, isDark }) {
                   .map((s) => (
                     <div key={s.id} className="flex justify-between text-sm">
                       <span className={t.muted}>{s.name || "Unnamed"}</span>
-                      <span>
-                        {formatMoney(s.amount / 12)}/mo
-                        <span className={`ml-1 ${t.subtle}`}>({formatMoney(s.amount)}/yr)</span>
+                      <span className="text-right">
+                        {s.hasDiscount && s.discount > 0 ? (
+                          <>
+                            <span className={`line-through mr-1 ${t.subtle}`}>{formatMoney(s.amount / 12)}</span>
+                            <span className="text-emerald-400">{formatMoney(effectiveAmount(s) / 12)}</span>
+                          </>
+                        ) : (
+                          formatMoney(s.amount / 12)
+                        )}
+                        <span className={t.subtle}>/mo </span>
+                        <span className={`${t.subtle}`}>({formatMoney(s.hasDiscount && s.discount > 0 ? effectiveAmount(s) : s.amount)}/yr)</span>
                       </span>
                     </div>
                   ))}

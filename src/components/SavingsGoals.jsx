@@ -1,3 +1,4 @@
+import { useState } from "react"
 import IncomeBar from "./IncomeBar"
 
 function SavingsGoals({ data, setData, t, isDark }) {
@@ -16,7 +17,7 @@ function SavingsGoals({ data, setData, t, isDark }) {
 
   const addGoal = () => {
     const newId = Math.max(...extraGoals.map((g) => g.id), 0) + 1
-    setData({ ...data, extraGoals: [...extraGoals, { id: newId, name: "", amount: 0 }] })
+    setData({ ...data, extraGoals: [...extraGoals, { id: newId, name: "", amount: 0, currentSaved: 0 }] })
   }
 
   const removeGoal = (id) => {
@@ -24,16 +25,17 @@ function SavingsGoals({ data, setData, t, isDark }) {
   }
 
   const expenses = data.monthlyExpenses || []
+  // Both fixed essential (🛡️) and variable essential (🧾) count toward emergency fund
   const monthlyEssentials = expenses.filter((e) => e.essential !== false).reduce((sum, e) => sum + (e.amount || 0), 0)
   const monthsCoverage = data.emergencyMonths || 0
   const emergencyTarget = monthlyEssentials * monthsCoverage
   const currentSavings = data.currentSavings || 0
   const hysaApy = data.hysaApy || 0
   const monthlyDeposit = data.monthlyEmergencyDeposit || 0
+  const monthlyRate = hysaApy / 100 / 12
 
   const projection = []
   let balance = currentSavings
-  const monthlyRate = hysaApy / 100 / 12
   let goalReachedMonth = null
 
   for (let i = 1; i <= 36; i++) {
@@ -41,17 +43,31 @@ function SavingsGoals({ data, setData, t, isDark }) {
     balance += monthlyDeposit + interest
     const month = new Date()
     month.setMonth(month.getMonth() + i)
-
     if (balance >= emergencyTarget && goalReachedMonth === null && emergencyTarget > 0) {
       goalReachedMonth = i
     }
-
     projection.push({
       month: i,
       label: month.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
       balance,
       interest,
     })
+  }
+
+  const buildGoalProjection = (goal) => {
+    const proj = []
+    let bal = goal.currentSaved || 0
+    for (let i = 1; i <= 36; i++) {
+      bal += (goal.amount || 0) + bal * monthlyRate
+      const m = new Date()
+      m.setMonth(m.getMonth() + i)
+      proj.push({
+        month: i,
+        label: m.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+        balance: bal,
+      })
+    }
+    return proj
   }
 
   const extraGoalsTotal = extraGoals.reduce((sum, g) => sum + (g.amount || 0), 0)
@@ -65,7 +81,117 @@ function SavingsGoals({ data, setData, t, isDark }) {
       maximumFractionDigits: 0,
     }).format(amount)
 
+  const fmtShort = (amount) => {
+    if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`
+    if (amount >= 1_000) return `$${(amount / 1_000).toFixed(0)}K`
+    return `$${Math.round(amount)}`
+  }
+
   const maxBalance = Math.max(...projection.map((p) => p.balance), emergencyTarget, 1)
+  const activeGoals = extraGoals.filter((g) => (g.amount || 0) > 0 || (g.currentSaved || 0) > 0)
+
+  const [emergencyTooltip, setEmergencyTooltip] = useState(null)
+  const [goalTooltip, setGoalTooltip] = useState(null)
+
+  // Renders a bar chart with Y-axis, grid lines, labels, and tooltip
+  const renderBars = ({ proj, maxBal, barHpx, labelEvery, getColor, tooltip, setTooltip, yTicks = 5 }) => {
+    const tickValues = Array.from({ length: yTicks }, (_, i) =>
+      maxBal * (1 - i / (yTicks - 1))
+    )
+
+    return (
+      <div className="flex gap-2">
+        {/* Y-axis */}
+        <div
+          className="flex flex-col justify-between items-end shrink-0"
+          style={{ width: "40px", height: `${barHpx}px` }}
+        >
+          {tickValues.map((v, i) => (
+            <span key={i} className={`text-[9px] leading-none ${t.subtle}`}>
+              {fmtShort(v)}
+            </span>
+          ))}
+        </div>
+
+        {/* Bars + x-axis labels */}
+        <div className="flex-1 min-w-0">
+          {/* Bar area */}
+          <div
+            className="relative"
+            style={{ height: `${barHpx}px` }}
+            onMouseLeave={() => setTooltip(null)}
+          >
+            {/* Horizontal grid lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+              {tickValues.map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-full h-px ${isDark ? "bg-gray-700/50" : "bg-gray-300/60"}`}
+                />
+              ))}
+            </div>
+
+            {/* Bars */}
+            <div className="relative z-10 flex gap-0.5 h-full">
+              {proj.map((p, idx) => (
+                <div
+                  key={p.month}
+                  className="relative flex-1 h-full cursor-crosshair group"
+                  onMouseEnter={() => setTooltip({ idx, label: p.label, balance: p.balance })}
+                  onClick={() =>
+                    setTooltip((prev) =>
+                      prev?.idx === idx ? null : { idx, label: p.label, balance: p.balance }
+                    )
+                  }
+                >
+                  {/* Tooltip */}
+                  {tooltip?.idx === idx && (
+                    <div
+                      className={`absolute z-20 pointer-events-none px-2.5 py-1.5 rounded-lg border text-xs whitespace-nowrap shadow-xl ${t.card}`}
+                      style={{
+                        bottom: "calc(100% + 6px)",
+                        left: "50%",
+                        transform: `translateX(${
+                          idx < 3 ? "0%" : idx > proj.length - 4 ? "-100%" : "-50%"
+                        })`,
+                      }}
+                    >
+                      <p className={`font-medium ${t.muted}`}>{p.label}</p>
+                      <p className="text-emerald-400 font-semibold">{formatMoney(p.balance)}</p>
+                      {p.interest > 0 && (
+                        <p className={`text-[10px] mt-0.5 ${t.subtle}`}>
+                          +{formatMoney(p.interest)} interest this month
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bar — absolute from bottom eliminates flex sub-pixel drift */}
+                  <div
+                    className={`absolute bottom-0 left-0 right-0 rounded-t transition-all duration-300 group-hover:brightness-125 ${getColor(p)}`}
+                    style={{ height: `${(p.balance / maxBal) * 100}%`, minHeight: "2px" }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* X-axis labels — separate row, never affects bar heights */}
+          <div className="flex gap-0.5 mt-1" style={{ height: "28px" }}>
+            {proj.map((p) => (
+              <div key={p.month} className="flex-1 overflow-visible">
+                {p.month % labelEvery === 0 && (
+                  <span className={`text-[9px] rotate-45 origin-left block leading-none ${t.subtle}`}>
+                    {p.label}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -91,13 +217,40 @@ function SavingsGoals({ data, setData, t, isDark }) {
                   className={`w-full mt-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
                 />
               </label>
+
               {monthlyEssentials > 0 && (
-                <div className={`border rounded-lg p-3 text-sm ${t.card}`}>
-                  <span className={t.muted}>Essential expenses: </span>
-                  <span className="font-medium">{formatMoney(monthlyEssentials)}</span>
-                  <span className={t.muted}> × {monthsCoverage} months = </span>
-                  <span className="text-emerald-400 font-medium">{formatMoney(emergencyTarget)} target</span>
-                  <p className={`text-xs mt-1 ${t.subtle}`}>🛡️ Only essential items from Monthly Expenses are included</p>
+                <div className={`border rounded-lg p-4 text-sm space-y-3 ${t.card}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span>🛡️</span>
+                    <span className={`text-xs font-medium uppercase tracking-wide ${t.subtle}`}>Included in emergency fund</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {expenses
+                      .filter((e) => e.essential !== false && e.amount > 0)
+                      .map((e) => (
+                        <div key={e.id} className="flex justify-between">
+                          <span className={t.muted}>
+                            {e.essential === "variable" ? "🧾" : "🛡️"} {e.name || "Unnamed"}
+                          </span>
+                          <span>{formatMoney(e.amount)}/mo</span>
+                        </div>
+                      ))}
+                    {expenses.filter((e) => e.essential !== false && e.amount > 0).length === 0 && (
+                      <p className={`text-xs ${t.subtle}`}>No essential expenses with amounts yet.</p>
+                    )}
+                  </div>
+                  <div className={`border-t pt-2 space-y-1 ${t.border}`}>
+                    <div className="flex justify-between font-medium">
+                      <span>Monthly total</span>
+                      <span>{formatMoney(monthlyEssentials)}</span>
+                    </div>
+                    {monthsCoverage > 0 && (
+                      <div className="flex justify-between">
+                        <span className={t.muted}>× {monthsCoverage} months</span>
+                        <span className="text-emerald-400 font-medium">{formatMoney(emergencyTarget)} target</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -151,33 +304,48 @@ function SavingsGoals({ data, setData, t, isDark }) {
               <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Other Savings Goals</h3>
               <p className={`${t.subtle} text-xs`}>Travel, PC build, etc. — monthly amount you set aside.</p>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {extraGoals.map((goal) => (
-                  <div key={goal.id} className="flex gap-3 items-center">
-                    <input
-                      type="text"
-                      value={goal.name}
-                      onChange={(e) => updateGoal(goal.id, "name", e.target.value)}
-                      placeholder="Goal name"
-                      className={`flex-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
-                    />
-                    <div className="relative w-36">
-                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                  <div key={goal.id} className="space-y-1.5">
+                    <div className="flex gap-3 items-center">
                       <input
-                        type="number"
-                        value={goal.amount || ""}
-                        onChange={(e) => updateGoal(goal.id, "amount", Number(e.target.value))}
-                        placeholder="0"
-                        className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                        type="text"
+                        value={goal.name}
+                        onChange={(e) => updateGoal(goal.id, "name", e.target.value)}
+                        placeholder="Goal name"
+                        className={`flex-1 rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
                       />
+                      <div className="relative w-36">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                        <input
+                          type="number"
+                          value={goal.amount || ""}
+                          onChange={(e) => updateGoal(goal.id, "amount", Number(e.target.value))}
+                          placeholder="0"
+                          className={`w-full rounded-lg pl-8 pr-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                        />
+                      </div>
+                      <span className={`text-xs w-8 ${t.subtle}`}>/mo</span>
+                      <button
+                        onClick={() => removeGoal(goal.id)}
+                        className={`${t.subtle} hover:text-red-400 transition-colors p-1`}
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <span className={`text-xs w-8 ${t.subtle}`}>/mo</span>
-                    <button
-                      onClick={() => removeGoal(goal.id)}
-                      className={`${t.subtle} hover:text-red-400 transition-colors p-1`}
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center gap-3 pl-4">
+                      <span className={`text-xs whitespace-nowrap ${t.muted}`}>Saved so far</span>
+                      <div className="relative w-36">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>$</span>
+                        <input
+                          type="number"
+                          value={goal.currentSaved || ""}
+                          onChange={(e) => updateGoal(goal.id, "currentSaved", Number(e.target.value))}
+                          placeholder="0"
+                          className={`w-full rounded-lg pl-8 pr-4 py-2 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm ${t.input}`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -220,9 +388,7 @@ function SavingsGoals({ data, setData, t, isDark }) {
                   <div className={`w-full rounded-full h-2 mt-2 ${t.pill}`}>
                     <div
                       className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, (currentSavings / emergencyTarget) * 100)}%`,
-                      }}
+                      style={{ width: `${Math.min(100, (currentSavings / emergencyTarget) * 100)}%` }}
                     />
                   </div>
                   <p className={`text-xs text-right ${t.subtle}`}>
@@ -230,8 +396,8 @@ function SavingsGoals({ data, setData, t, isDark }) {
                   </p>
 
                   {goalReachedMonth && (
-                    <div className="bg-emerald-900/30 border border-emerald-800 rounded-lg p-3 text-center mt-2">
-                      <p className="text-sm text-emerald-400">
+                    <div className={`border rounded-lg p-3 text-center mt-2 ${t.card}`}>
+                      <p className="text-sm text-emerald-500 font-medium">
                         Goal reached in ~{goalReachedMonth} months
                       </p>
                       <p className={`text-xs ${t.subtle}`}>
@@ -259,43 +425,84 @@ function SavingsGoals({ data, setData, t, isDark }) {
           </div>
         </div>
 
+        {/* Emergency fund 36-month projection */}
         {monthlyDeposit > 0 && (
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
               Emergency Fund Projection (36 months)
             </h3>
             <div className={`border rounded-xl p-6 ${t.card}`}>
-              <div className="flex items-end gap-1 h-48">
-                {projection
-                  .filter((_, i) => i % 2 === 0)
-                  .map((p) => (
-                    <div key={p.month} className="flex-1 flex flex-col items-center gap-1">
-                      <div className="w-full flex flex-col justify-end h-36">
-                        <div
-                          className={`w-full rounded-sm transition-all duration-300 ${
-                            p.balance >= emergencyTarget ? "bg-emerald-500" : isDark ? "bg-gray-600" : "bg-gray-400"
-                          }`}
-                          style={{
-                            height: `${(p.balance / maxBalance) * 100}%`,
-                            minHeight: "2px",
-                          }}
-                        />
-                      </div>
-                      <span className={`text-[10px] rotate-45 origin-left ${t.subtle}`}>
-                        {p.label}
-                      </span>
-                    </div>
-                  ))}
-              </div>
+              {renderBars({
+                proj: projection,
+                maxBal: maxBalance,
+                barHpx: 144,
+                labelEvery: 3,
+                yTicks: 5,
+                getColor: (p) =>
+                  p.balance >= emergencyTarget
+                    ? "bg-emerald-500"
+                    : isDark ? "bg-gray-600" : "bg-gray-400",
+                tooltip: emergencyTooltip,
+                setTooltip: setEmergencyTooltip,
+              })}
 
               {emergencyTarget > 0 && (
-                <div className="flex items-center gap-2 mt-4 text-xs">
+                <div className="flex items-center gap-2 mt-2 ml-[48px] text-xs">
                   <div className="w-4 h-0.5 bg-emerald-500" />
                   <span className={t.muted}>Target: {formatMoney(emergencyTarget)}</span>
                   <div className={`w-4 h-0.5 ${isDark ? "bg-gray-600" : "bg-gray-400"}`} />
                   <span className={t.muted}>Below target</span>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Per-goal projections */}
+        {activeGoals.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">
+              Goal Projections (36 months)
+            </h3>
+            <div className="grid grid-cols-2 gap-6">
+              {activeGoals.map((goal, idx, arr) => {
+                const goalProj = buildGoalProjection(goal)
+                const maxBal = Math.max(...goalProj.map((p) => p.balance), 1)
+                const isOddLast = arr.length % 2 !== 0 && idx === arr.length - 1
+                const activeTooltip = goalTooltip?.goalId === goal.id ? goalTooltip : null
+
+                return (
+                  <div
+                    key={goal.id}
+                    className={isOddLast ? "col-span-2 mx-auto w-[calc(50%-12px)]" : ""}
+                  >
+                    <div className={`border rounded-xl p-4 ${t.card}`}>
+                      <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-wide mb-1">
+                        {goal.name || "Unnamed Goal"}
+                      </h4>
+                      {(goal.currentSaved || 0) > 0 && (
+                        <p className={`text-xs mb-2 ${t.subtle}`}>
+                          Starting from {formatMoney(goal.currentSaved)}
+                        </p>
+                      )}
+                      {renderBars({
+                        proj: goalProj,
+                        maxBal,
+                        barHpx: 72,
+                        labelEvery: 6,
+                        yTicks: 3,
+                        getColor: () => "bg-emerald-500",
+                        tooltip: activeTooltip,
+                        setTooltip: (val) =>
+                          setGoalTooltip(val ? { ...val, goalId: goal.id } : null),
+                      })}
+                      <p className={`text-xs mt-1 text-right ${t.subtle}`}>
+                        {formatMoney(goalProj[35].balance)} after 3 years
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
