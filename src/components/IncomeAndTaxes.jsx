@@ -7,6 +7,8 @@ import PieChart from "./PieChart"
 
 function IncomeAndTaxes({ data, setData, t, isDark }) {
   const [viewMode, setViewMode] = useState("monthly")
+  const [showPaystub, setShowPaystub] = useState(false)
+  const [paystubMode, setPaystubMode] = useState("average")
   const handleChange = (field, value) => {
     setData({ ...data, [field]: value })
   }  
@@ -348,6 +350,127 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
               <span className="text-red-400">{formatMoney(viewMode === "monthly" ? results.totalDeductions / 12 : results.totalDeductions)}</span>
             </div>
           </div>
+
+          {results.gross > 0 && (
+            <div className={`border-t pt-4 ${t.border}`}>
+              <button
+                onClick={() => setShowPaystub((v) => !v)}
+                className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wide"
+              >
+                <span className={t.subtle}>Paystub Preview (per paycheck)</span>
+                <span className={t.subtle}>{showPaystub ? "▲" : "▼"}</span>
+              </button>
+
+              {showPaystub && (() => {
+                const n = results.paychecksPerYear
+                const isHourly = (data.incomeType || "salary") === "hourly"
+                const avgHoursPerPeriod = ((data.hoursPerWeek || 40) * 52) / n
+
+                // Gross per check in each mode
+                const grossAvg = results.gross / n
+                const gross80  = 80 * (data.hourlyRate || 0)
+                const gross = paystubMode === "80hr" ? gross80 : grossAvg
+
+                // Scale taxes proportionally from annual amounts
+                // Fixed deductions (HSA, health, dental, vision) stay the same per period
+                const scale = results.gross > 0 ? gross / (results.gross / n) : 1
+
+                const taxes = [
+                  { label: "Federal Tax",    value: (results.federalTax   / n) * scale },
+                  ...(results.hasStateTax ? [{ label: (allStates.find((s) => s.code === data.stateCode)?.name || "State") + " Tax", value: (results.stateTax / n) * scale }] : []),
+                  ...(results.cityTax > 0  ? [{ label: (data.cityName || "City") + " Tax", value: (results.cityTax / n) * scale }] : []),
+                  { label: "Social Security", value: (results.socialSecurity / n) * scale },
+                  { label: "Medicare",        value: (results.medicare      / n) * scale },
+                ]
+
+                // 401k scales with gross; fixed benefits stay flat
+                const deductions = [
+                  { label: "401(k)",           value: (results.deduction401k  / n) * scale },
+                  { label: "HSA",              value:  results.deductionHSA   / n },
+                  { label: "Health Insurance", value:  results.deductionHealth / n },
+                  { label: "Dental",           value:  results.deductionDental / n },
+                  { label: "Vision",           value:  results.deductionVision / n },
+                ].filter(({ value }) => value > 0)
+
+                const totalTaxes       = taxes.reduce((s, x) => s + x.value, 0)
+                const totalDeductions  = deductions.reduce((s, x) => s + x.value, 0)
+                const netPay           = gross - totalTaxes - totalDeductions
+
+                return (
+                  <div className={`mt-3 border rounded-lg overflow-hidden text-sm ${t.card}`}>
+                    {/* Mode toggle — only meaningful for hourly */}
+                    {isHourly && (
+                      <div className={`flex border-b ${t.border}`}>
+                        {[
+                          { key: "average", label: `Avg (${avgHoursPerPeriod % 1 === 0 ? avgHoursPerPeriod : avgHoursPerPeriod.toFixed(1)} hrs)` },
+                          { key: "80hr",    label: "80 hrs" },
+                        ].map(({ key, label }) => (
+                          <button
+                            key={key}
+                            onClick={() => setPaystubMode(key)}
+                            className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
+                              paystubMode === key
+                                ? "bg-emerald-600 text-white"
+                                : isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Gross */}
+                    <div className={`px-3 py-2 space-y-0.5 border-b ${t.border}`}>
+                      <div className="flex justify-between font-medium">
+                        <span>Gross Pay</span>
+                        <span>{formatMoney(gross)}</span>
+                      </div>
+                      {isHourly && (
+                        <div className={`flex justify-between text-xs ${t.subtle}`}>
+                          <span>{paystubMode === "80hr" ? "80" : (avgHoursPerPeriod % 1 === 0 ? avgHoursPerPeriod : avgHoursPerPeriod.toFixed(1))} hrs × ${data.hourlyRate}/hr</span>
+                        </div>
+                      )}
+                      <div className={`flex justify-between text-xs ${t.subtle}`}>
+                        <span>− Standard deduction (${(results.federalStandardDeduction / n).toFixed(0)}/check)</span>
+                        <span>= {formatMoney(gross - results.federalStandardDeduction / n)} federal taxable</span>
+                      </div>
+                    </div>
+
+                    {/* Taxes */}
+                    <div className={`px-3 py-2 space-y-1.5 border-b ${t.border}`}>
+                      <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>Taxes Withheld</p>
+                      {taxes.map(({ label, value }) => (
+                        <div key={label} className="flex justify-between">
+                          <span className={t.muted}>{label}</span>
+                          <span className="text-red-400">−{formatMoney(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Pre-tax deductions */}
+                    {deductions.length > 0 && (
+                      <div className={`px-3 py-2 space-y-1.5 border-b ${t.border}`}>
+                        <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>Pre-Tax Deductions</p>
+                        {deductions.map(({ label, value }) => (
+                          <div key={label} className="flex justify-between">
+                            <span className={t.muted}>{label}</span>
+                            <span className="text-red-400">−{formatMoney(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Net */}
+                    <div className="px-3 py-2 flex justify-between font-bold">
+                      <span>Net Pay</span>
+                      <span className="text-emerald-400">{formatMoney(netPay)}</span>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
 
           {results.gross > 0 && (
             <div className={`rounded-lg p-3 text-center ${t.pill}`}>

@@ -1,15 +1,20 @@
 import { getStateBrackets, getCityTax } from "./stateTaxData"
 
-// Federal tax brackets (2025, single filer)
+// Federal tax brackets (2025, single filer — IRS Rev. Proc. 2024-40)
+// Boundaries are aligned so each bracket's min equals the previous bracket's max.
 const FEDERAL_BRACKETS = [
-  { min: 0, max: 11925, rate: 0.10 },
-  { min: 11925, max: 48475, rate: 0.12 },
-  { min: 48475, max: 103350, rate: 0.22 },
-  { min: 103350, max: 197300, rate: 0.24 },
-  { min: 197300, max: 250525, rate: 0.32 },
-  { min: 250525, max: 626350, rate: 0.35 },
-  { min: 626350, max: Infinity, rate: 0.37 },
+  { min: 0,       max: 11925,   rate: 0.10 },
+  { min: 11925,   max: 48475,   rate: 0.12 },
+  { min: 48475,   max: 103350,  rate: 0.22 },
+  { min: 103350,  max: 197300,  rate: 0.24 },
+  { min: 197300,  max: 250525,  rate: 0.32 },
+  { min: 250525,  max: 626350,  rate: 0.35 },
+  { min: 626350,  max: Infinity, rate: 0.37 },
 ]
+
+// 2025 standard deduction (single). The IRS Percentage Method (Pub 15-T)
+// subtracts this before applying brackets — without it federal tax is over-withheld.
+const FEDERAL_STANDARD_DEDUCTION = 15000
 
 function calcBracketTax(income, brackets) {
   let tax = 0
@@ -61,8 +66,9 @@ export function calculateTaxBreakdown(data) {
 
   const taxableIncome = Math.max(0, gross - preTaxDeductions)
 
-  // Tax calculations
-  const federalTax = calcBracketTax(taxableIncome, FEDERAL_BRACKETS)
+  // Federal: IRS Percentage Method subtracts standard deduction before brackets
+  const federalTaxableIncome = Math.max(0, taxableIncome - FEDERAL_STANDARD_DEDUCTION)
+  const federalTax = calcBracketTax(federalTaxableIncome, FEDERAL_BRACKETS)
   const stateTax = calcStateTax(taxableIncome, stateCode)
   const cityTax = calcCityTax(taxableIncome, cityName, stateTax)
 
@@ -88,6 +94,8 @@ export function calculateTaxBreakdown(data) {
   return {
     gross,
     taxableIncome,
+    federalTaxableIncome,
+    federalStandardDeduction: FEDERAL_STANDARD_DEDUCTION,
     preTaxDeductions,
     deduction401k,
     deductionHSA,
