@@ -84,7 +84,7 @@ function MonthlyExpenses({ data, setData, t, isDark }) {
             <div className={`mt-3 flex flex-col gap-1 text-xs ${t.muted}`}>
               <span>🛡️ <strong>Fixed essential</strong> — counted in emergency fund · shown as Fixed Expenses</span>
               <span>🧾 <strong>Variable essential</strong> — counted in emergency fund · shown as Variable Budget (food, gas, etc.)</span>
-              <span className="opacity-50">✦ <strong>Non-essential</strong> — excluded from emergency fund · shown as Expenses</span>
+              <span>✦ <strong>Non-essential</strong> — excluded from emergency fund · shown as Expenses</span>
               <span className={`${t.subtle} mt-0.5`}>Click the icon on each row to cycle through types.</span>
             </div>
           </div>

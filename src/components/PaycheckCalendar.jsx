@@ -207,7 +207,7 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
   const carryOver = data.carryOverMonths !== false
 
   const payFrequency = data.payFrequency || "biweekly"
-  const monthlyBudget = data.monthlyExpenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0
+  const monthlyBudget = data.monthlyExpenses?.filter((e) => e.essential !== "variable" && (e.amount || 0) > 0).reduce((sum, e) => sum + (e.amount || 0), 0) || 0
   const monthlySubs = (data.monthlySubs?.reduce((sum, s) => sum + (s.amount || 0), 0) || 0)
     + (data.annualSubs?.reduce((sum, s) => sum + (s.amount || 0), 0) || 0) / 12
   const monthlySavings = (data.monthlyEmergencyDeposit || 0)
