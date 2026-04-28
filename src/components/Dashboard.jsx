@@ -60,6 +60,7 @@ function Dashboard({ data, setData, t, isDark }) {
   }
 
   return (
+    <>
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
@@ -360,6 +361,7 @@ function Dashboard({ data, setData, t, isDark }) {
         </div>
       </div>
     )}
+    </>
   )
 }
 
