@@ -251,7 +251,22 @@ const renderStep = () => {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {renderStep()}
       </main>
-            {showAuth && (
+
+      <footer className={`border-t mt-8 py-4 text-center ${t.border}`}>
+        <p className={`text-xs ${t.subtle}`}>
+          Built by{" "}
+          <a
+            href="https://portfolio-one-sooty-42.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-500 hover:text-emerald-400 transition-colors"
+          >
+            Rodrigo Quijano
+          </a>
+        </p>
+      </footer>
+
+      {showAuth && (
         <AuthModal onClose={() => setShowAuth(false)} t={t} isDark={isDark} />
       )}
     </div>
