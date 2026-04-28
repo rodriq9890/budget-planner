@@ -56,8 +56,11 @@ export function calculateTaxBreakdown(data) {
   const stateCode = data.stateCode || "NY"
   const cityName = data.cityName || null
 
-  // Pre-tax deductions reduce taxable income
-  const deduction401k = (gross * (data.retirement401k || 0)) / 100
+  // Roth 401k is post-tax and does NOT reduce taxable income; traditional does
+  const isRoth = data.is401kRoth || false
+  const deduction401k = isRoth ? 0 : (gross * (data.retirement401k || 0)) / 100
+  const roth401k = isRoth ? (gross * (data.retirement401k || 0)) / 100 : 0
+
   const deductionHSA = (data.hsa || 0) * 12
   const deductionHealth = (data.healthInsurance || 0) * 12
   const deductionDental = (data.dental || 0) * 12
@@ -76,9 +79,15 @@ export function calculateTaxBreakdown(data) {
   const socialSecurity = Math.min(gross, 176100) * 0.062
   const medicare = gross * 0.0145
 
-  const totalTax = federalTax + stateTax + cityTax + socialSecurity + medicare
+  // NY-specific payroll taxes (apply to gross wages)
+  // NY SDI: $0.60/week employee contribution, capped at $31.20/year (2026)
+  // NY PFL: 0.432% of wages (2026 empirical rate from NYDFS; updates annually)
+  const nySDI = stateCode === "NY" ? Math.min(gross * 0.006, 31.20) : 0
+  const nyPFL = stateCode === "NY" ? Math.min(gross * 0.00432, 400) : 0
+
+  const totalTax = federalTax + stateTax + cityTax + socialSecurity + medicare + nySDI + nyPFL
   const totalDeductions = totalTax + preTaxDeductions
-  const annualNet = gross - totalDeductions
+  const annualNet = gross - totalDeductions - roth401k
 
   // Get labels for display
   const stateData = getStateBrackets(stateCode)
@@ -102,11 +111,15 @@ export function calculateTaxBreakdown(data) {
     deductionHealth,
     deductionDental,
     deductionVision,
+    roth401k,
+    isRoth,
     federalTax,
     stateTax,
     cityTax,
     socialSecurity,
     medicare,
+    nySDI,
+    nyPFL,
     totalTax,
     totalDeductions,
     annualNet,

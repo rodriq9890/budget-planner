@@ -106,9 +106,12 @@ function PieChart({ slices, title, size = 200, formatMoney, isDark = true }) {
                 style={{ backgroundColor: p.color }}
               />
               <span className={isDark ? "text-gray-400" : "text-gray-600"}>{p.label}</span>
-              <span className="ml-auto font-medium whitespace-nowrap">
-                {(p.percentage * 100).toFixed(1)}%
-              </span>
+              <div className="ml-auto text-right shrink-0">
+                <span className="font-medium whitespace-nowrap">{fmt(p.value)}</span>
+                <span className={`text-xs ml-1.5 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                  {(p.percentage * 100).toFixed(1)}%
+                </span>
+              </div>
             </div>
           ))}
         </div>

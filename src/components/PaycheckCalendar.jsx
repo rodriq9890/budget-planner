@@ -2,7 +2,8 @@ import { useState } from "react"
 import { calculateTaxBreakdown } from "../utils/taxCalculator"
 import IncomeBar from "./IncomeBar"
 
-function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommitted, fmt, updateActual, payFrequency, hourlyRate, effectiveTaxRate, biweeklyNet, isPast, onExport }) {
+function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommitted, committedBreakdown, fmt, updateActual, updateActualIncome, payFrequency, hourlyRate, effectiveTaxRate, biweeklyNet, isPast, onExport, showActualIncome }) {
+  const [showCommitted, setShowCommitted] = useState(false)
   const isBonus = payFrequency === "biweekly"
     ? month.paychecks.length > 2
     : payFrequency === "weekly"
@@ -40,10 +41,50 @@ function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommit
       <div className="space-y-1.5 text-sm">
         <div className="flex justify-between">
           <span className={t.muted}>Income</span>
-          <span className="text-emerald-400 font-medium">{fmt(month.totalIncome)}</span>
+          <div className="flex items-center gap-1.5">
+            {month.isIncomeActual && (
+              <span className={`text-xs opacity-60 ${t.subtle}`}>actual</span>
+            )}
+            <span className="text-emerald-400 font-medium">{fmt(month.totalIncome)}</span>
+          </div>
         </div>
-        <div className="flex justify-between">
-          <span className={t.muted}>Committed</span>
+        <div
+          className="relative flex justify-between cursor-default"
+          onMouseEnter={() => setShowCommitted(true)}
+          onMouseLeave={() => setShowCommitted(false)}
+        >
+          {showCommitted && committedBreakdown && (
+            <div
+              className={`absolute bottom-full left-0 mb-2 z-50 min-w-[200px] rounded-lg border shadow-xl text-xs ${t.card}`}
+              style={{ pointerEvents: "none" }}
+            >
+              <div className="px-3 py-2 space-y-1.5">
+                {committedBreakdown.expenses > 0 && (
+                  <div className="flex justify-between gap-4">
+                    <span className={t.muted}>Fixed Expenses</span>
+                    <span className="font-medium">{fmt(committedBreakdown.expenses)}</span>
+                  </div>
+                )}
+                {committedBreakdown.subscriptions > 0 && (
+                  <div className="flex justify-between gap-4">
+                    <span className={t.muted}>Subscriptions</span>
+                    <span className="font-medium">{fmt(committedBreakdown.subscriptions)}</span>
+                  </div>
+                )}
+                {committedBreakdown.savings > 0 && (
+                  <div className="flex justify-between gap-4">
+                    <span className={t.muted}>Savings</span>
+                    <span className="font-medium">{fmt(committedBreakdown.savings)}</span>
+                  </div>
+                )}
+              </div>
+              <div className={`flex justify-between px-3 py-1.5 border-t font-semibold ${t.border}`}>
+                <span className={t.subtle}>Total</span>
+                <span>{fmt(totalMonthlyCommitted)}</span>
+              </div>
+            </div>
+          )}
+          <span className={`underline decoration-dashed underline-offset-2 ${t.muted}`}>Committed</span>
           <span>{fmt(totalMonthlyCommitted)}</span>
         </div>
         <div className={`flex justify-between border-t pt-1.5 ${t.border}`}>
@@ -64,7 +105,25 @@ function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommit
         )}
       </div>
 
-      <div className={`border-t pt-3 ${t.border}`}>
+      <div className={`border-t pt-3 space-y-3 ${t.border}`}>
+        {showActualIncome && (
+          <label className="block">
+            <span className={`text-xs ${t.subtle}`}>Actual Income</span>
+            <div className="relative mt-1">
+              <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-xs ${t.subtle}`}>$</span>
+              <input
+                type="number"
+                value={month.actualIncomeInput ?? ""}
+                onChange={(e) => updateActualIncome(month.incomeKey, e.target.value)}
+                placeholder={String(Math.round(month.calculatedIncome))}
+                className={`w-full rounded-lg pl-7 pr-3 py-1.5 text-sm border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+              />
+            </div>
+            {month.isIncomeActual && (
+              <p className={`text-xs mt-0.5 ${t.subtle}`}>Calculated: {fmt(month.calculatedIncome)}</p>
+            )}
+          </label>
+        )}
         <label className="block">
           <span className={`text-xs ${t.subtle}`}>Actual Spent</span>
           <div className="relative mt-1">
@@ -79,7 +138,7 @@ function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommit
           </div>
         </label>
         {month.actual !== null && (
-          <div className="mt-2 space-y-1">
+          <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className={t.subtle}>
                 {month.actual <= month.totalIncome ? "Under budget" : "Over budget"}
@@ -110,7 +169,7 @@ function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommit
             {month.paycheckDetails && month.paycheckDetails.length > 0 ? (
               <>
                 <div className={`pb-0.5 ${t.subtle}`}>
-                  ${hourlyRate}/hr · {(effectiveTaxRate * 100).toFixed(1)}% effective tax
+                  ${hourlyRate}/hr · {(effectiveTaxRate * 100).toFixed(1)}% withheld
                 </div>
                 {month.paycheckDetails.map((p, i) => (
                   <div key={i} className={`flex justify-between pt-0.5 ${i > 0 ? `border-t ${t.border}` : ""}`}>
@@ -177,6 +236,149 @@ function MonthCard({ month, t, isDark, isHourly, hoursPerDay, totalMonthlyCommit
   )
 }
 
+function PayBreakdownModal({ results, data, effectiveTaxRate, rothPctAnnual, isHourly, hourlyRate, t, isDark, fmt, onClose }) {
+  const gross = results.gross
+  if (gross === 0) return null
+
+  const pct = (v) => `${((v / gross) * 100).toFixed(2)}%`
+
+  const taxRows = [
+    { label: "Federal Income Tax", value: results.federalTax },
+    ...(results.stateTax > 0 ? [{ label: `${results.stateCode} State Tax`, value: results.stateTax }] : []),
+    ...(results.cityTax > 0 ? [{ label: `${results.cityName} City Tax`, value: results.cityTax }] : []),
+    { label: "Social Security (6.2%)", value: results.socialSecurity },
+    { label: "Medicare (1.45%)", value: results.medicare },
+    ...(results.nySDI > 0 ? [{ label: "NY SDI (disability ins.)", value: results.nySDI }] : []),
+    ...(results.nyPFL > 0 ? [{ label: "NY PFL (paid family leave)", value: results.nyPFL }] : []),
+  ]
+
+  const benefitRows = [
+    ...(results.deductionHSA > 0 ? [{ label: "HSA (pre-tax)", value: results.deductionHSA }] : []),
+    ...(results.deductionHealth > 0 ? [{ label: "Health Insurance (pre-tax)", value: results.deductionHealth }] : []),
+    ...(results.deductionDental > 0 ? [{ label: "Dental (pre-tax)", value: results.deductionDental }] : []),
+    ...(results.deductionVision > 0 ? [{ label: "Vision (pre-tax)", value: results.deductionVision }] : []),
+    ...(!results.isRoth && results.deduction401k > 0 ? [{ label: "401(k) Traditional (pre-tax)", value: results.deduction401k }] : []),
+  ]
+
+  const taxRate = results.totalDeductions / gross
+  const periodHours = isHourly ? [80, 88, 96] : []
+
+  const Row = ({ label, value, bold }) => (
+    <div className={`flex justify-between text-sm ${bold ? "font-semibold" : ""}`}>
+      <span className={bold ? "" : t.muted}>{label}</span>
+      <div className="flex items-center gap-4">
+        <span className={`text-xs w-12 text-right tabular-nums ${t.subtle}`}>{pct(value)}</span>
+        <span className={`w-20 text-right tabular-nums ${bold ? "" : "font-medium"}`}>{fmt(value)}</span>
+      </div>
+    </div>
+  )
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className={`relative w-full max-w-md rounded-2xl border shadow-2xl max-h-[88vh] overflow-y-auto ${t.card}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`sticky top-0 flex items-center justify-between px-5 py-4 border-b ${t.border} ${t.card} rounded-t-2xl`}>
+          <h3 className="font-semibold">Pay Withholding Breakdown</h3>
+          <button onClick={onClose} className="text-xl leading-none opacity-50 hover:opacity-100">×</button>
+        </div>
+
+        <div className="px-5 py-4 space-y-5">
+          <div>
+            <p className={`text-xs uppercase tracking-wide font-medium mb-2 ${t.subtle}`}>Income Taxes (annual)</p>
+            <div className="space-y-1.5">
+              {taxRows.map((r, i) => <Row key={i} label={r.label} value={r.value} />)}
+              <div className={`border-t pt-2 mt-1 ${t.border}`}>
+                <Row label="Tax subtotal" value={results.totalTax} bold />
+              </div>
+            </div>
+          </div>
+
+          {benefitRows.length > 0 && (
+            <div>
+              <p className={`text-xs uppercase tracking-wide font-medium mb-2 ${t.subtle}`}>Pre-Tax Benefits (annual)</p>
+              <div className="space-y-1.5">
+                {benefitRows.map((r, i) => <Row key={i} label={r.label} value={r.value} />)}
+                {benefitRows.length > 1 && (
+                  <div className={`border-t pt-2 mt-1 ${t.border}`}>
+                    <Row label="Benefits subtotal" value={results.preTaxDeductions} bold />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {results.isRoth && results.roth401k > 0 && (
+            <div>
+              <p className={`text-xs uppercase tracking-wide font-medium mb-2 ${t.subtle}`}>Post-Tax (annual)</p>
+              <Row label="Roth 401(k)" value={results.roth401k} />
+            </div>
+          )}
+
+          <div className={`rounded-xl p-3.5 space-y-2 ${isDark ? "bg-gray-800/60" : "bg-gray-100"}`}>
+            <div className="flex justify-between text-sm">
+              <span className={t.muted}>Pure tax rate</span>
+              <span className="font-semibold">{((results.totalTax / gross) * 100).toFixed(1)}%</span>
+            </div>
+            <div className={`flex justify-between text-sm border-t pt-2 ${t.border}`}>
+              <span className="font-semibold">Total withheld per paycheck</span>
+              <span className="font-bold text-lg">{(effectiveTaxRate * 100).toFixed(1)}%</span>
+            </div>
+            <p className={`text-xs leading-relaxed ${t.subtle}`}>
+              The Income &amp; Taxes page shows <strong>{((results.totalTax / gross) * 100).toFixed(1)}%</strong> — taxes only.
+              The calendar shows <strong>{(effectiveTaxRate * 100).toFixed(1)}%</strong> — taxes + pre-tax benefits{results.isRoth ? " + Roth 401(k)" : ""}.
+              Both are calculated on the same gross; only what's included differs.
+            </p>
+          </div>
+
+          <div>
+            <p className={`text-xs uppercase tracking-wide font-medium mb-3 ${t.subtle}`}>
+              {isHourly ? "Gross vs Take-Home by Period" : "Gross vs Take-Home Per Paycheck"}
+            </p>
+            {isHourly ? (
+              <div className="space-y-2">
+                {periodHours.map((h) => {
+                  const pGross = h * hourlyRate
+                  const pTaxBen = pGross * taxRate
+                  const pRoth = results.isRoth ? pGross * rothPctAnnual : 0
+                  const pNet = pGross - pTaxBen - pRoth
+                  return (
+                    <div key={h} className={`rounded-lg border p-3 ${t.border} ${isDark ? "bg-gray-800/30" : "bg-gray-50"}`}>
+                      <div className="flex justify-between text-sm font-medium mb-1.5">
+                        <span>{h} hrs · <span className={t.subtle}>{fmt(pGross)} gross</span></span>
+                        <span className="text-emerald-400">{fmt(pNet)} net</span>
+                      </div>
+                      <div className={`flex gap-4 text-xs ${t.subtle}`}>
+                        <span>Taxes &amp; benefits: {fmt(pTaxBen)}</span>
+                        {results.isRoth && <span>Roth: {fmt(pRoth)}</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={`rounded-lg border p-3 ${t.border}`}>
+                <div className="flex justify-between text-sm font-medium mb-1">
+                  <span className={t.subtle}>{fmt(gross / results.paychecksPerYear)} gross</span>
+                  <span className="text-emerald-400">{fmt(results.biweeklyNet)} net</span>
+                </div>
+                <p className={`text-xs ${t.subtle}`}>
+                  Withheld: {fmt(gross / results.paychecksPerYear - results.biweeklyNet)} ({(effectiveTaxRate * 100).toFixed(1)}% of gross)
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ToggleRow({ show, onToggle, labelExpand, labelCollapse, isDark }) {
   return (
     <button
@@ -203,16 +405,19 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [showPast, setShowPast] = useState(false)
   const [showFuture, setShowFuture] = useState(false)
+  const [showPayBreakdown, setShowPayBreakdown] = useState(false)
 
   const carryOver = data.carryOverMonths !== false
 
   const payFrequency = data.payFrequency || "biweekly"
   const monthlyBudget = data.monthlyExpenses?.filter((e) => e.essential !== "variable" && (e.amount || 0) > 0).reduce((sum, e) => sum + (e.amount || 0), 0) || 0
-  const monthlySubs = (data.monthlySubs?.reduce((sum, s) => sum + (s.amount || 0), 0) || 0)
-    + (data.annualSubs?.reduce((sum, s) => sum + (s.amount || 0), 0) || 0) / 12
+  const effectiveMonthlySub = (s) => Math.max(0, (s.amount || 0) - (s.hasDiscount ? (s.discount || 0) : 0))
+  const monthlySubs = (data.monthlySubs?.reduce((sum, s) => sum + effectiveMonthlySub(s), 0) || 0)
+    + (data.annualSubs?.reduce((sum, s) => sum + (s.amount || 0) / 12, 0) || 0)
   const monthlySavings = (data.monthlyEmergencyDeposit || 0)
     + (data.extraGoals?.reduce((sum, g) => sum + (g.amount || 0), 0) || 0)
   const totalMonthlyCommitted = monthlyBudget + monthlySubs + monthlySavings
+  const committedBreakdown = { expenses: monthlyBudget, subscriptions: monthlySubs, savings: monthlySavings }
 
   function getPaycheckDates(year) {
     const dates = []
@@ -268,6 +473,9 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
       let totalIncome
       let paycheckDetails = []
 
+      const taxRate = results.gross > 0 ? results.totalDeductions / results.gross : 0
+      const rothPct = results.isRoth ? (data.retirement401k || 0) / 100 : 0
+
       if (isHourly && payFrequency === "semimonthly") {
         paychecks.forEach((payDate) => {
           let periodStart, periodEnd
@@ -290,25 +498,29 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
           }
           const periodHours = periodWorkingDays * hoursPerDay
           const grossPay = periodHours * hourlyRate
-          const taxRate = results.gross > 0 ? results.totalDeductions / results.gross : 0
-          const netPay = grossPay * (1 - taxRate)
+          const netPay = grossPay * (1 - taxRate - rothPct)
           paycheckDetails.push({ date: payDate, periodStart, periodEnd, workingDays: periodWorkingDays, hours: periodHours, net: netPay })
         })
         totalIncome = paycheckDetails.reduce((sum, p) => sum + p.net, 0)
       } else if (isHourly) {
         const monthlyHours = workingDays * hoursPerDay
         const grossMonthly = monthlyHours * hourlyRate
-        const taxRate = results.gross > 0 ? results.totalDeductions / results.gross : 0
-        totalIncome = grossMonthly * (1 - taxRate)
+        totalIncome = grossMonthly * (1 - taxRate - rothPct)
       } else {
         totalIncome = paychecks.length * results.biweeklyNet
       }
+
+      const calculatedIncome = totalIncome
+      const incomeKey = `income_${year}_${i}`
+      const actualIncomeInput = data[incomeKey] !== undefined ? Number(data[incomeKey]) : null
+      if (actualIncomeInput !== null) totalIncome = actualIncomeInput
+      const isIncomeActual = actualIncomeInput !== null
 
       const surplus = totalIncome - totalMonthlyCommitted
       const key = `actual_${year}_${i}`
       const actual = data[key] ?? null
 
-      return { index: i, name: monthName, paychecks, workingDays, totalIncome, surplus, actual, key, paycheckDetails, carryover: 0, year, showYear: false }
+      return { index: i, name: monthName, paychecks, workingDays, totalIncome, calculatedIncome, incomeKey, actualIncomeInput, isIncomeActual, surplus, actual, key, paycheckDetails, carryover: 0, year, showYear: false }
     })
 
     if (carryOver) {
@@ -366,11 +578,22 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
     setData({ ...data, [key]: value === "" ? null : Number(value) })
   }
 
+  const updateActualIncome = (key, value) => {
+    if (value === "") {
+      const { [key]: _removed, ...rest } = data
+      setData(rest)
+    } else {
+      setData({ ...data, [key]: Number(value) })
+    }
+  }
+
   function exportMonth(month) {
     const payload = {
       month: month.name,
       year: month.year,
       income: month.totalIncome,
+      incomeIsActual: month.isIncomeActual,
+      calculatedIncome: month.calculatedIncome,
       committed: totalMonthlyCommitted,
       surplus: month.surplus,
       carryover: month.carryover,
@@ -406,14 +629,30 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
   const totalAnnualCommitted = totalMonthlyCommitted * 12
   const totalPaychecks = months.reduce((sum, m) => sum + m.paychecks.length, 0)
 
-  const effectiveTaxRate = results.gross > 0 ? results.totalDeductions / results.gross : 0
+  // Show total deduction rate (taxes + benefits + Roth) so the label matches what's actually withheld per check
+  const rothPctAnnual = results.isRoth ? (data.retirement401k || 0) / 100 : 0
+  const effectiveTaxRate = results.gross > 0 ? results.totalDeductions / results.gross + rothPctAnnual : 0
   const cardProps = {
-    t, isDark, isHourly, hoursPerDay, totalMonthlyCommitted, fmt, updateActual, payFrequency,
+    t, isDark, isHourly, hoursPerDay, totalMonthlyCommitted, committedBreakdown, fmt, updateActual, updateActualIncome, payFrequency,
     hourlyRate, effectiveTaxRate, biweeklyNet: results.biweeklyNet,
   }
 
   return (
     <div>
+      {showPayBreakdown && (
+        <PayBreakdownModal
+          results={results}
+          data={data}
+          effectiveTaxRate={effectiveTaxRate}
+          rothPctAnnual={rothPctAnnual}
+          isHourly={isHourly}
+          hourlyRate={hourlyRate}
+          t={t}
+          isDark={isDark}
+          fmt={fmt}
+          onClose={() => setShowPayBreakdown(false)}
+        />
+      )}
       <IncomeBar data={data} t={t} />
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
@@ -422,6 +661,19 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
             <p className={`${t.subtle} text-sm`}>Track your paychecks and actual spending month by month.</p>
           </div>
           <div className="flex items-center gap-3">
+            {results.gross > 0 && (
+              <button
+                onClick={() => setShowPayBreakdown(true)}
+                title="View withholding breakdown and gross vs take-home"
+                className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  isDark
+                    ? "border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300"
+                    : "border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600"
+                }`}
+              >
+                {(effectiveTaxRate * 100).toFixed(1)}% withheld ↗
+              </button>
+            )}
             <button
               onClick={() => setData({ ...data, carryOverMonths: !carryOver })}
               title="Carry over monthly surplus or deficit to the next month"
@@ -505,6 +757,7 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
                   month={month}
                   {...cardProps}
                   isPast={true}
+                  showActualIncome={true}
                   onExport={() => exportMonth(month)}
                 />
               ))}
@@ -514,12 +767,14 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleMonths.map((month) => {
               const isMonthPast = isCurrentYear && month.index < currentMonth
+              const isMonthCurrent = isCurrentYear && month.index === currentMonth
               return (
                 <MonthCard
                   key={month.index}
                   month={month}
                   {...cardProps}
                   isPast={isMonthPast}
+                  showActualIncome={isMonthPast || isMonthCurrent || selectedYear < currentYear}
                   onExport={() => exportMonth(month)}
                 />
               )
@@ -544,6 +799,7 @@ function PaycheckCalendar({ data, setData, t, isDark }) {
                   month={month}
                   {...cardProps}
                   isPast={false}
+                  showActualIncome={false}
                   onExport={() => exportMonth(month)}
                 />
               ))}

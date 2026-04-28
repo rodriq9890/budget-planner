@@ -11,6 +11,8 @@ const fmt = (v) =>
     maximumFractionDigits: 0,
   }).format(v)
 
+const effectiveSub = (s) => Math.max(0, (s.amount || 0) - (s.hasDiscount ? (s.discount || 0) : 0))
+
 function getBudgetData(data) {
   const results = calculateTaxBreakdown(data)
   const expenses = data.monthlyExpenses || []
@@ -19,8 +21,8 @@ function getBudgetData(data) {
   const extraGoals = data.extraGoals || []
 
   const monthlyEssentials = expenses.filter((e) => e.essential !== false).reduce((sum, e) => sum + (e.amount || 0), 0)
-  const monthlySubsTotal = monthlySubs.reduce((sum, s) => sum + (s.amount || 0), 0)
-  const annualSubsMonthly = annualSubs.reduce((sum, s) => sum + (s.amount || 0), 0) / 12
+  const monthlySubsTotal = monthlySubs.reduce((sum, s) => sum + effectiveSub(s), 0)
+  const annualSubsMonthly = annualSubs.reduce((sum, s) => sum + effectiveSub(s), 0) / 12
   const emergencyDeposit = data.monthlyEmergencyDeposit || 0
   const extraGoalsTotal = extraGoals.reduce((sum, g) => sum + (g.amount || 0), 0)
 
@@ -77,8 +79,8 @@ export function exportToPDF(data) {
     body: [
       ["Gross Annual Salary", fmt(data.grossSalary)],
       ["Federal Tax", fmt(b.results.federalTax)],
-      ["NY State Tax", fmt(b.results.nyStateTax)],
-      ["NYC Tax", fmt(b.results.nycTax)],
+      ["State Tax", fmt(b.results.stateTax)],
+      ["City Tax", fmt(b.results.cityTax)],
       ["Social Security", fmt(b.results.socialSecurity)],
       ["Medicare", fmt(b.results.medicare)],
       ["Total Tax", fmt(b.results.totalTax)],
@@ -122,8 +124,8 @@ export function exportToPDF(data) {
   y += 8
 
   const subRows = [
-    ...b.monthlySubs.filter((s) => s.amount > 0).map((s) => [s.name, fmt(s.amount), "Monthly"]),
-    ...b.annualSubs.filter((s) => s.amount > 0).map((s) => [s.name, fmt(s.amount / 12), `Annual (${fmt(s.amount)}/yr)`]),
+    ...b.monthlySubs.filter((s) => effectiveSub(s) > 0).map((s) => [s.name, fmt(effectiveSub(s)), "Monthly"]),
+    ...b.annualSubs.filter((s) => effectiveSub(s) > 0).map((s) => [s.name, fmt(effectiveSub(s) / 12), `Annual (${fmt(effectiveSub(s))}/yr)`]),
   ]
   subRows.push(["Total", fmt(b.totalWants), ""])
 
@@ -216,8 +218,8 @@ export function exportToExcel(data) {
     ["Item", "Amount"],
     ["Gross Annual Salary", data.grossSalary],
     ["Federal Tax", b.results.federalTax],
-    ["NY State Tax", b.results.nyStateTax],
-    ["NYC Tax", b.results.nycTax],
+    ["State Tax", b.results.stateTax],
+    ["City Tax", b.results.cityTax],
     ["Social Security", b.results.socialSecurity],
     ["Medicare", b.results.medicare],
     ["Total Tax", b.results.totalTax],
@@ -244,8 +246,8 @@ export function exportToExcel(data) {
     [],
     ["WANTS (Subscriptions)"],
     ["Name", "Monthly Cost", "Billing"],
-    ...b.monthlySubs.filter((s) => s.amount > 0).map((s) => [s.name, s.amount, "Monthly"]),
-    ...b.annualSubs.filter((s) => s.amount > 0).map((s) => [s.name, s.amount / 12, `Annual (${fmt(s.amount)}/yr)`]),
+    ...b.monthlySubs.filter((s) => effectiveSub(s) > 0).map((s) => [s.name, effectiveSub(s), "Monthly"]),
+    ...b.annualSubs.filter((s) => effectiveSub(s) > 0).map((s) => [s.name, effectiveSub(s) / 12, `Annual (${fmt(effectiveSub(s))}/yr)`]),
     ["Total Wants", b.totalWants],
     [],
     ["SAVINGS"],

@@ -204,19 +204,39 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-emerald-400 uppercase tracking-wide">Pre-Tax Deductions</h3>
 
-          <label className="block">
-            <span className={`text-sm ${t.muted}`}>401k Contribution (%)</span>
-            <div className="relative mt-1">
-              <input
-                type="number"
-                value={data.retirement401k || ""}
-                onChange={(e) => handleChange("retirement401k", Number(e.target.value))}
-                placeholder="6"
-                className={`w-full rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
-              />
-              <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>%</span>
+          <div>
+            <span className={`text-sm ${t.muted}`}>401(k) Contribution (%)</span>
+            <div className="flex gap-2 mt-1">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  value={data.retirement401k || ""}
+                  onChange={(e) => handleChange("retirement401k", Number(e.target.value))}
+                  placeholder="6"
+                  className={`w-full rounded-lg px-4 py-2.5 border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${t.input}`}
+                />
+                <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${t.subtle}`}>%</span>
+              </div>
+              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "inherit" }}>
+                {[{ key: false, label: "Traditional" }, { key: true, label: "Roth" }].map(({ key, label }) => (
+                  <button
+                    key={String(key)}
+                    onClick={() => handleChange("is401kRoth", key)}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      (data.is401kRoth || false) === key
+                        ? "bg-emerald-600 text-white"
+                        : isDark ? `border-gray-700 text-gray-400 hover:bg-gray-800 ${t.input}` : `border-gray-300 text-gray-500 hover:bg-gray-100 ${t.input}`
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </label>
+            {data.is401kRoth && (data.retirement401k || 0) > 0 && (
+              <p className={`text-xs mt-1 ${t.subtle}`}>Roth is post-tax — does not reduce taxable income</p>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             {[
@@ -312,6 +332,8 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
                 ...(results.cityTax > 0 ? [{ label: data.cityName, value: results.cityTax }] : []),
                 { label: "Social Security", value: results.socialSecurity },
                 { label: "Medicare", value: results.medicare },
+                ...(results.nySDI > 0 ? [{ label: "NY Disability (SDI)", value: results.nySDI }] : []),
+                ...(results.nyPFL > 0 ? [{ label: "NY Paid Family Leave", value: results.nyPFL }] : []),
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between">
                   <span className={t.muted}>{label}</span>
@@ -331,7 +353,7 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
             </h4>
             <div className="space-y-2">
               {[
-                { label: "401(k)", value: results.deduction401k },
+                ...(results.deduction401k > 0 ? [{ label: "401(k) Traditional", value: results.deduction401k }] : []),
                 { label: "HSA", value: results.deductionHSA },
                 { label: "Health Insurance", value: results.deductionHealth },
                 { label: "Dental", value: results.deductionDental },
@@ -345,9 +367,18 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
                   </div>
                 ))}
             </div>
+            {results.roth401k > 0 && (
+              <div className={`border-t pt-2 space-y-1 ${t.border}`}>
+                <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>Post-Tax</p>
+                <div className="flex justify-between">
+                  <span className={t.muted}>Roth 401(k)</span>
+                  <span>{formatMoney(viewMode === "monthly" ? results.roth401k / 12 : results.roth401k)}</span>
+                </div>
+              </div>
+            )}
             <div className={`flex justify-between border-t pt-2 font-medium ${t.border}`}>
               <span>Total Deductions</span>
-              <span className="text-red-400">{formatMoney(viewMode === "monthly" ? results.totalDeductions / 12 : results.totalDeductions)}</span>
+              <span className="text-red-400">{formatMoney(viewMode === "monthly" ? (results.totalDeductions + results.roth401k) / 12 : results.totalDeductions + results.roth401k)}</span>
             </div>
           </div>
 
@@ -381,20 +412,24 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
                   ...(results.cityTax > 0  ? [{ label: (data.cityName || "City") + " Tax", value: (results.cityTax / n) * scale }] : []),
                   { label: "Social Security", value: (results.socialSecurity / n) * scale },
                   { label: "Medicare",        value: (results.medicare      / n) * scale },
+                  ...(results.nySDI > 0 ? [{ label: "NY Disability", value: results.nySDI / n }] : []),
+                  ...(results.nyPFL > 0 ? [{ label: "NY Paid Family Leave", value: (results.nyPFL / n) * scale }] : []),
                 ]
 
-                // 401k scales with gross; fixed benefits stay flat
+                // Traditional 401k scales with gross and is pre-tax; fixed benefits stay flat
                 const deductions = [
-                  { label: "401(k)",           value: (results.deduction401k  / n) * scale },
+                  ...(!results.isRoth ? [{ label: "401(k) Traditional", value: (results.deduction401k / n) * scale }] : []),
                   { label: "HSA",              value:  results.deductionHSA   / n },
                   { label: "Health Insurance", value:  results.deductionHealth / n },
                   { label: "Dental",           value:  results.deductionDental / n },
                   { label: "Vision",           value:  results.deductionVision / n },
                 ].filter(({ value }) => value > 0)
 
+                const rothDeduction = results.isRoth ? (results.roth401k / n) * scale : 0
+
                 const totalTaxes       = taxes.reduce((s, x) => s + x.value, 0)
                 const totalDeductions  = deductions.reduce((s, x) => s + x.value, 0)
-                const netPay           = gross - totalTaxes - totalDeductions
+                const netPay           = gross - totalTaxes - totalDeductions - rothDeduction
 
                 return (
                   <div className={`mt-3 border rounded-lg overflow-hidden text-sm ${t.card}`}>
@@ -458,6 +493,17 @@ function IncomeAndTaxes({ data, setData, t, isDark }) {
                             <span className="text-red-400">−{formatMoney(value)}</span>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Roth post-tax */}
+                    {results.isRoth && rothDeduction > 0 && (
+                      <div className={`px-3 py-2 space-y-1.5 border-b ${t.border}`}>
+                        <p className={`text-xs uppercase tracking-wide ${t.subtle}`}>Post-Tax Deductions</p>
+                        <div className="flex justify-between">
+                          <span className={t.muted}>Roth 401(k)</span>
+                          <span className="text-red-400">−{formatMoney(rothDeduction)}</span>
+                        </div>
                       </div>
                     )}
 
